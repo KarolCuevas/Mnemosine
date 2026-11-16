@@ -1,0 +1,49 @@
+-- Fuentes de audio: dispositivos, orígenes y trabajos de escaneo.
+
+CREATE TABLE DEVICE (
+  device_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  kind ENUM('SERVER','LOCAL','CLOUD') NOT NULL DEFAULT 'SERVER',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (device_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE SOURCE (
+  source_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  device_id BIGINT UNSIGNED NOT NULL,
+  owner_user_id BIGINT UNSIGNED NULL,
+  name VARCHAR(255) NOT NULL,
+  base_relative_path VARCHAR(512) NOT NULL,
+  status ENUM('ACTIVE','DISCONNECTED') NOT NULL DEFAULT 'ACTIVE',
+  last_scanned_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (source_id),
+  KEY ix_source_device (device_id),
+  KEY ix_source_owner (owner_user_id),
+  CONSTRAINT fk_source_device FOREIGN KEY (device_id) REFERENCES DEVICE (device_id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_source_owner FOREIGN KEY (owner_user_id) REFERENCES USER_ACCOUNT (user_id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE SCAN_JOB (
+  scan_job_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  source_id BIGINT UNSIGNED NOT NULL,
+  owner_user_id BIGINT UNSIGNED NOT NULL,
+  status ENUM('PENDING','RUNNING','COMPLETED','FAILED','CANCELLED') NOT NULL DEFAULT 'PENDING',
+  files_found INT UNSIGNED NOT NULL DEFAULT 0,
+  files_added INT UNSIGNED NOT NULL DEFAULT 0,
+  files_skipped INT UNSIGNED NOT NULL DEFAULT 0,
+  error_message VARCHAR(500) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  started_at DATETIME NULL,
+  finished_at DATETIME NULL,
+  PRIMARY KEY (scan_job_id),
+  KEY ix_scan_source (source_id),
+  KEY ix_scan_owner (owner_user_id),
+  KEY ix_scan_status (status),
+  CONSTRAINT fk_scan_source FOREIGN KEY (source_id) REFERENCES SOURCE (source_id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_scan_owner FOREIGN KEY (owner_user_id) REFERENCES USER_ACCOUNT (user_id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

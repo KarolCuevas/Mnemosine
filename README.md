@@ -117,10 +117,11 @@ docs/               Guías de arquitectura, datos y crecimiento
 ```
 
 1. Lee [la arquitectura](docs/ARQUITECTURA.md) para saber dónde va cada archivo.
-2. Diseña el DER con [la guía de datos](docs/MODELO_DATOS.md) y el SRS original.
-3. Escribe migraciones y luego cuentas, sesiones y permisos.
-4. Construye carga privada → biblioteca → reproducción y prueba con dos usuarios.
-5. Sigue [la guía de crecimiento](docs/ESCALABILIDAD.md) antes de publicar.
+2. Sigue el arranque por hitos (acuerdos → datos → cuentas → demo privada) en [el plan de arranque](docs/PLAN_ARRANQUE.md) y cierra las decisiones propuestas en [decisiones](docs/DECISIONES.md) antes de escribir migraciones.
+3. Diseña el DER con [la guía de datos](docs/MODELO_DATOS.md), [el DER inicial](docs/DER.md) y el SRS original.
+4. Escribe migraciones y luego cuentas, sesiones y permisos.
+5. Construye carga privada → biblioteca → reproducción y prueba con dos usuarios.
+6. Sigue [la guía de crecimiento](docs/ESCALABILIDAD.md) antes de publicar.
 
 Las carpetas vacías incluyen `.gitkeep` para conservarse al versionar. No hay
 pruebas de negocio implementadas todavía; usa los escenarios del plan original.
