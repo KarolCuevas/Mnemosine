@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     db_user: str = "mnemosine_app"
     db_password: str
 
+    # Seguridad (Fase 2). Genera SECRET_KEY aleatorio: python -c "import secrets;print(secrets.token_hex(32))"
+    secret_key: str
+    session_sliding_days: int = 7      # expiración deslizante por inactividad
+    session_absolute_days: int = 30    # límite absoluto desde la creación
+    session_cookie_secure: bool = False  # True obligatorio tras HTTPS
+    login_rate_limit_attempts: int = 5
+    login_rate_limit_window_minutes: int = 5
+
 
 @lru_cache
 def get_settings() -> Settings:

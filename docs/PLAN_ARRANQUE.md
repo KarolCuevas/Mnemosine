@@ -20,6 +20,10 @@ Reglas del plan maestro que este arranque respeta:
 - Toda petición (incluidos rangos de audio) vuelve a comprobar permisos.
 - SQL explícito parametrizado, sin ORM; audio fuera de MySQL.
 
+Estado de ejecución: **Fase 0 (documentada y decisiones aprobadas), Fase 1 y Fase 2
+(cuentas, invitaciones, sesiones revocables y aislamiento A/B/admin, con ajustes D4/D8/D13)
+completadas y verificadas el 16/11/2026. Fase 3 pendiente.**
+
 ## Fase 0 — Acuerdos y diseño (H0, ≈2–3 días)
 
 Objetivo: cerrar lo imprescindible para no rehacer trabajo en H1–H3.

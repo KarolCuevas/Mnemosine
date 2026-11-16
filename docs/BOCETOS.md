@@ -86,7 +86,8 @@ no ofrece reproducir ni descargar; la canción permanece en la biblioteca.
 ┌──────────────────────────────────────┐
 │ Permisos de «Aurora — Kältmare»      │
 │ Visibilidad: (•) Privada  ( ) Pública│
-│ ☐ Declaro que tengo autorización…    │  ← declaración registrada
+│ ☐ Declaro que tengo autorización…    │  ← PUBLICATION asociada a la copia
+│ ☐ Autorizo la descarga pública de esta copia│ ← DOWNLOAD asociada a la copia
 │                                      │
 │ Compartida con:                      │
 │  B  ☑ Reproducir  ☐ Descargar  [↺]   │

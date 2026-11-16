@@ -170,6 +170,21 @@ def main() -> int:
                 "TRACK_SHARE duplicado (copia, destinatario)",
             ))
 
+            # Autorización asociada a la copia: kind válido / inválido
+            cursor.execute(
+                "INSERT INTO AUTHORIZATION_DECLARATION (location_id, kind, declaration, declared_by) "
+                "VALUES (%s, 'PUBLICATION', 'verify-publicacion', %s)",
+                (location_a, user_a),
+            )
+            print("  ok    AUTHORIZATION_DECLARATION PUBLICATION insertada")
+            results.append(expect_error(
+                cursor,
+                "INSERT INTO AUTHORIZATION_DECLARATION (location_id, kind, declaration, declared_by) "
+                "VALUES (%s, 'BOGUS', 'verify', %s)",
+                (location_a, user_a),
+                "AUTHORIZATION_DECLARATION kind fuera de catálogo",
+            ))
+
             # ENUM inválido
             results.append(expect_error(
                 cursor,

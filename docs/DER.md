@@ -26,6 +26,8 @@ erDiagram
     ALBUM ||--o{ ALBUM_ARTIST : ""
     ARTIST ||--o{ ALBUM_ARTIST : ""
     TRACK_LOCATION ||--o{ TRACK_SHARE : "se comparte en"
+    TRACK_LOCATION ||--o{ AUTHORIZATION_DECLARATION : "registra autorización"
+    USER_ACCOUNT ||--o{ AUTHORIZATION_DECLARATION : "declara"
     TRACK_LOCATION ||--o{ FILE_OPERATION : ""
     TRACK_LOCATION ||--o{ PERMISSION_AUDIT : ""
     PLAYLIST ||--|{ PLAYLIST_TRACK : "ordena"
@@ -133,6 +135,7 @@ erDiagram
         varchar mime_type
         enum visibility "PRIVATE|PUBLIC"
         enum availability "AVAILABLE|MISSING|ERROR"
+        tinyint public_download_allowed
         datetime created_at
         datetime updated_at
     }
@@ -161,6 +164,14 @@ erDiagram
         bigint track_id PK,FK
         int position
     }
+    AUTHORIZATION_DECLARATION {
+        bigint declaration_id PK
+        bigint location_id FK
+        enum kind "PUBLICATION|DOWNLOAD"
+        varchar declaration
+        bigint declared_by FK
+        datetime declared_at
+    }
     FILE_OPERATION {
         bigint operation_id PK
         enum type "UPLOAD|DOWNLOAD|SCAN"
@@ -186,6 +197,17 @@ erDiagram
 `PERMISSION_AUDIT.action` ∈ `PUBLISH | UNPUBLISH | SHARE_GRANT | SHARE_REVOKE |
 DOWNLOAD_GRANT | DOWNLOAD_REVOKE | VISIBILITY_CHANGE | ROLE_CHANGE |
 ACCOUNT_DEACTIVATE | ACCOUNT_ACTIVATE`.
+
+**Autorización asociada a la copia (ajuste D8, 2026-11-16):**
+`AUTHORIZATION_DECLARATION(location_id, kind, declaration, declared_by,
+declared_at)` conserva quién declaró, cuándo y el texto, ligada a la copia
+concreta. Cubre las publicaciones públicas y las autorizaciones de descarga
+pública (`TRACK_LOCATION.public_download_allowed`), que no tienen destinatario
+individual. Los permisos por cuenta siguen en `TRACK_SHARE`. Las reglas de
+negocio —p. ej. exigir declaración `PUBLICATION` antes de poner PUBLIC— se
+aplican en la capa de servicios; `PERMISSION_AUDIT` guarda copia del texto como
+traza. El rol ADMIN no altera estos permisos: solo habilita endpoints de
+gestión.
 
 ## Notas de diseño
 
@@ -231,4 +253,12 @@ ACCOUNT_DEACTIVATE | ACCOUNT_ACTIVATE`.
     PERMISSION_AUDIT o en futuras anotaciones de catálogo.
 11. **USER_SESSION** soporta revocación en caliente: el middleware comprueba
     `revoked_at IS NULL AND expires_at > NOW()` en cada request; desactivar
-    la cuenta revoca todas sus sesiones.
+    la cuenta revoca todas sus sesiones. Dos límites: deslizante
+    (`SESSION_SLIDING_DAYS`, 7 d por defecto) y absoluto desde `created_at`
+    (`SESSION_ABSOLUTE_DAYS`, 30 d por defecto).
+12. **AUTHORIZATION_DECLARATION** es hija de TRACK_LOCATION (se borra con ella
+    si algún día hay borrado físico); `declared_by` usa RESTRICT para no
+    perder la trazabilidad histórica del declarante.
+13. **Regla ADMIN (matriz revisada)**: el permiso sobre contenido se calcula
+    solo por dueño, `visibility`/`public_download_allowed` y `TRACK_SHARE`
+    activos. El rol no suma ni resta.

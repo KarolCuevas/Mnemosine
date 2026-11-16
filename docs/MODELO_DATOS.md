@@ -1,7 +1,8 @@
 # Guía para diseñar la base de datos
 
-Este esquema conceptual deriva del plan, no sustituye el DER ni el diccionario
-del SRS. No hay migraciones de negocio implementadas.
+Las migraciones numeradas viven en `database/migrations/` (0001–0008) y se
+aplican con `python -m scripts.migrate`. El detalle ejecutable está en el DER
+inicial del repo. No sustituye el DER ni el diccionario del SRS.
 
 | Bloque | Tablas previstas | Responsabilidad |
 |---|---|---|
@@ -12,7 +13,7 @@ del SRS. No hay migraciones de negocio implementadas.
 | Compartición | TRACK_SHARE | Permisos independientes de reproducción y descarga por copia |
 | Listas | PLAYLIST, PLAYLIST_TRACK | Dueño, canciones y orden |
 | Operaciones | FILE_OPERATION | Cargas, descargas y escaneos |
-| Extensiones propuestas | USER_SESSION, PERMISSION_AUDIT | Sesiones revocables y cambios de permisos |
+| Extensiones propuestas | USER_SESSION, PERMISSION_AUDIT, INVITATION, AUTHORIZATION_DECLARATION | Sesiones revocables, traza de permisos, registro por invitación y autorización ligada a la copia |
 
 Relaciones clave: TRACK tiene muchas TRACK_LOCATION; cada copia tiene un dueño y
 una fuente. TRACK_SHARE se refiere a una copia y un destinatario. Una lista tiene

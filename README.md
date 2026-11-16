@@ -67,9 +67,16 @@ En una terminal desde la raíz:
 cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock.txt
+.\.venv\Scripts\python.exe -m scripts.migrate
 .\.venv\Scripts\python.exe -m scripts.check_db
+.\.venv\Scripts\python.exe -m scripts.create_admin
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+`create_admin` crea la primera cuenta ADMIN (la plataforma es por invitación; la
+primera cuenta se crea así). `python -m scripts.verify_schema` y
+`python -m scripts.verify_isolation` comprueban restricciones y aislamiento A/B/admin
+(esta última usa una base `mnemosine_test` temporal, ya eliminada al terminar).
 
 No hace falta activar el entorno ni cambiar la política de PowerShell.
 API: <http://127.0.0.1:8000/api/health>. Documentación: <http://127.0.0.1:8000/docs>.
