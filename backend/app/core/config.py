@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     login_rate_limit_attempts: int = 5
     login_rate_limit_window_minutes: int = 5
 
+    # Cargas (Fase 3). D3: 50 MB por archivo, 5 GB por cuenta.
+    max_upload_bytes: int = 50 * 1024 * 1024
+    max_user_quota_bytes: int = 5 * 1024 * 1024 * 1024
+    storage_root: str | None = None    # por defecto <repo>/storage
+
 
 @lru_cache
 def get_settings() -> Settings:
