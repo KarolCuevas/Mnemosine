@@ -183,6 +183,31 @@ Fecha: 16 de noviembre de 2026.
 - Modo `uvicorn --reload` sigue sin ser fiable (OneDrive): el proceso de
   desarrollo se reinicia manualmente sin `--reload`.
 
+## Incidencias de Fase 5 reportadas por el usuario y corregidas (17/11/2026)
+
+1. **«Intento activar las cuentas y no ocurre nada»**: todas las cuentas estaban
+   activas; la vista las mostraba desactivadas porque `UserOut` no incluía
+   `is_active` (undefined → «Desactivada»). Corregido (`schemas/auth.py`) y
+   commiteado con la app; el panel cambia a Activar/Desactivar correctamente.
+2. **«Las copias escaneadas aparecen no disponibles»**: el escaneo guardaba
+   `relative_path` sin el prefijo de la fuente, por lo que la entrega las daba
+   por inexistentes y las marcaba `MISSING` al primer intento de reproducción.
+   Corregido: las copias importadas referencian rutas relativas a la raíz de
+   audio **con el prefijo de la fuente**; migración `0012_prefijo_origen_copias.sql`
+   reescribe las rutas ya importadas en bases existentes. Tras el arreglo, un
+   reescaneo restaura la disponibilidad. Ya NO existe `SCAN_ROOT`: las fuentes
+   deben vivir dentro de `storage_root` (misma raíz servible por la entrega).
+3. **«Quiero el detalle de los escaneos (nombres, duración, etc.)»**: nueva tabla
+   `SCAN_JOB_FILE` (migración `0013_informe_escaneo.sql`) con ruta, resultado
+   (`ADDED`/`SKIPPED`/`MISSING`/`FAILED`), track, título, artista, álbum y
+   duración. Panel de administración: botón «Ver detalle» en cada fuente con
+   historial; endpoints `GET /api/admin/scan-jobs` y
+   `GET /api/admin/scan-jobs/{id}/files`.
+4. Verificación: `verify_phase5` ampliado a **29/29** (informe ADDED/SKIPPED/
+   MISSING incluido). Reparación de disponibilidad tras restaurar un archivo
+   revalidada. Docker hubo que levantarlo de nuevo tras un cierre inesperado;
+   todas las verificaciones re-ejecutadas y en verde.
+
 ## Pendiente
 
 - Demo del recorrido H3 en navegador (registro → carga → biblioteca → búsqueda →

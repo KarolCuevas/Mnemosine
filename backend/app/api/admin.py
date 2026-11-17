@@ -14,6 +14,7 @@ from app.schemas.admin import (
     ModerateUnpublishOut,
     PermissionAuditPage,
     RoleUpdate,
+    ScanJobFileOut,
     ScanJobOut,
     ScanRequest,
     SourceCreate,
@@ -95,6 +96,19 @@ def scan_source(source_id: int, payload: ScanRequest,
         name=f"scan-{job['scan_job_id']}",
     ).start()
     return ScanJobOut(**job)
+
+
+@router.get("/scan-jobs", response_model=list[ScanJobOut])
+def list_scan_jobs(source_id: int | None = Query(None),
+                   limit: int = Query(20, ge=1, le=100),
+                   admin: CurrentUser = Depends(get_admin_user)) -> list[ScanJobOut]:
+    return [ScanJobOut(**row) for row in scans.list_scan_jobs(source_id=source_id, limit=limit)]
+
+
+@router.get("/scan-jobs/{scan_job_id}/files", response_model=list[ScanJobFileOut])
+def list_scan_job_files(scan_job_id: int,
+                        admin: CurrentUser = Depends(get_admin_user)) -> list[ScanJobFileOut]:
+    return [ScanJobFileOut(**row) for row in scans.get_scan_job_files(scan_job_id=scan_job_id)]
 
 
 @router.get("/scan-jobs/{scan_job_id}", response_model=ScanJobOut)

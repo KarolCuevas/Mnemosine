@@ -22,11 +22,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 BACKEND = ROOT / "backend"
 STORAGE_TMP = tempfile.mkdtemp(prefix="mnemosine_test_storage_")
-SCAN_TMP = tempfile.mkdtemp(prefix="mnemosine_test_scan_")
 
 os.environ["DB_NAME"] = "mnemosine_test"
 os.environ["STORAGE_ROOT"] = STORAGE_TMP
-os.environ["SCAN_ROOT"] = SCAN_TMP
 
 RESULTS: list[tuple[str, bool]] = []
 
@@ -61,7 +59,7 @@ def make_wav_bytes(freq: int) -> bytes:
 
 
 def main() -> int:
-    scan_dir = Path(SCAN_TMP) / "biblioteca-demo"
+    scan_dir = Path(STORAGE_TMP) / "biblioteca-demo"
     scan_dir.mkdir(parents=True)
     (scan_dir / "tono-a.wav").write_bytes(make_wav_bytes(440))
     (scan_dir / "tono-b.wav").write_bytes(make_wav_bytes(660))
@@ -162,6 +160,20 @@ def main() -> int:
             check("todas las copias pertenecen a A (sin cambios de dueño)",
                   cursor.fetchone()["n"] == 2)
 
+        print("== Informe detallado del escaneo ==")
+        files1 = admin.get(f"/api/admin/scan-jobs/{job_id}/files").json()
+        check("el informe lista 2 archivos ADDED", len(files1) == 2 and all(f["outcome"] == "ADDED" for f in files1))
+        check("el informe trae título, artista y duración",
+              all(f["title"] and f["artist"] and (f["duration_seconds"] or 0) >= 1 for f in files1))
+        files2 = admin.get(f"/api/admin/scan-jobs/{job2_id}/files").json()
+        check("el reescaneo informa SKIPPED", len(files2) == 2 and all(f["outcome"] == "SKIPPED" for f in files2))
+        with repos_db.read_only() as cursor:
+            cursor.execute(
+                "SELECT COUNT(*) AS n FROM TRACK_LOCATION WHERE source_id = %s AND relative_path LIKE 'biblioteca-demo/%'",
+                (source_id,),
+            )
+            check("las copias guardan ruta relativa a la raíz de audio", cursor.fetchone()["n"] == 2)
+
         print("== Disponibilidad: borrar/restaurar ==")
         (scan_dir / "tono-a.wav").unlink()
         scan3 = admin.post(f"/api/admin/sources/{source_id}/scan",
@@ -175,14 +187,18 @@ def main() -> int:
             if job3["status"] in ("COMPLETED", "FAILED"):
                 break
             time.sleep(0.3)
+        files3 = admin.get(f"/api/admin/scan-jobs/{job3_id}/files").json()
+        missing_files = [f for f in files3 if f["outcome"] == "MISSING"]
+        check("el informe detalla el archivo MISSING",
+              len(missing_files) == 1 and missing_files[0]["relative_path"].endswith("tono-a.wav"))
         with repos_db.read_only() as cursor:
             cursor.execute(
                 "SELECT relative_path, availability FROM TRACK_LOCATION WHERE source_id = %s",
                 (source_id,),
             )
             availability = {row["relative_path"]: row["availability"] for row in cursor.fetchall()}
-        check("tono-a.wav queda MISSING tras borrarlo", availability.get("tono-a.wav") == "MISSING")
-        check("tono-b.wav sigue AVAILABLE", availability.get("tono-b.wav") == "AVAILABLE")
+        check("tono-a.wav queda MISSING tras borrarlo", availability.get("biblioteca-demo/tono-a.wav") == "MISSING")
+        check("tono-b.wav sigue AVAILABLE", availability.get("biblioteca-demo/tono-b.wav") == "AVAILABLE")
         (scan_dir / "tono-a.wav").write_bytes(make_wav_bytes(440))
         scan4 = admin.post(f"/api/admin/sources/{source_id}/scan",
                            json={"owner_user_id": a_id},
@@ -259,7 +275,6 @@ def main() -> int:
     finally:
         docker_sql("DROP DATABASE IF EXISTS mnemosine_test;")
         shutil.rmtree(STORAGE_TMP, ignore_errors=True)
-        shutil.rmtree(SCAN_TMP, ignore_errors=True)
 
     failures = sum(1 for _, ok in RESULTS if not ok)
     print()

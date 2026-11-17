@@ -109,6 +109,8 @@ export const api = {
   createSource: (payload) => request('/api/admin/sources', { method: 'POST', body: payload }),
   scanSource: (sourceId, ownerUserId) => request(`/api/admin/sources/${sourceId}/scan`, { method: 'POST', body: { owner_user_id: ownerUserId } }),
   scanJob: (jobId) => request(`/api/admin/scan-jobs/${jobId}`),
+  scanJobFiles: (jobId) => request(`/api/admin/scan-jobs/${jobId}/files`),
+  scanJobs: (sourceId) => request(`/api/admin/scan-jobs?source_id=${sourceId}`),
   setSourceStatus: (sourceId, status) => request(`/api/admin/sources/${sourceId}/status`, { method: 'POST', body: { status } }),
   operations: ({ type = '', page = 1, pageSize = 25 } = {}) => {
     const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })

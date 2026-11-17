@@ -58,6 +58,7 @@ class UserOut(BaseModel):
     email: str | None = None
     display_name: str | None = None
     role: str
+    is_active: bool = True
 
 
 class MessageOut(BaseModel):
@@ -80,4 +81,5 @@ def user_to_out(user: dict) -> UserOut:
         email=user.get("email"),
         display_name=user.get("display_name"),
         role=user["role"],
+        is_active=bool(user.get("is_active", True)),
     )

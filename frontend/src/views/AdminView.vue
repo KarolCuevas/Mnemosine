@@ -80,7 +80,24 @@
                 <option v-for="user in users" :key="user.id" :value="user.id">{{ user.username }}</option>
               </select>
               <button type="button" class="rounded-lg bg-teal-500 px-3 py-2 text-xs font-medium text-slate-950 hover:bg-teal-400 disabled:opacity-50" :disabled="source.status !== 'ACTIVE' || scanning" @click="scan(source.source_id)">Escanear</button>
+              <button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:border-teal-400 hover:text-teal-300" :disabled="!source.last_scan_job_id" @click="toggleDetails(source)">{{ details[source.source_id]?.open ? 'Ocultar detalle' : 'Ver detalle' }}</button>
               <button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:border-teal-400 hover:text-teal-300" @click="toggleSource(source)">{{ source.status === 'ACTIVE' ? 'Desconectar' : 'Conectar' }}</button>
+            </div>
+            <div v-if="details[source.source_id]?.open" class="mt-3 w-full border-t border-slate-800 pt-3">
+              <p v-if="details[source.source_id].loading" class="text-xs text-slate-500">Cargando informe…</p>
+              <p v-else-if="details[source.source_id].error" role="alert" class="text-xs text-red-300">{{ details[source.source_id].error }}</p>
+              <div v-else>
+                <p class="text-xs font-medium text-slate-400">Último escaneo (trabajo #{{ source.last_scan_job_id }}) — {{ details[source.source_id].files.length }} archivos</p>
+                <ul class="mt-2 divide-y divide-slate-800 rounded-lg border border-slate-800 text-xs">
+                  <li v-for="file in details[source.source_id].files" :key="file.scan_job_file_id" class="flex flex-wrap items-center gap-3 px-3 py-1.5">
+                    <span class="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase" :class="file.outcome === 'ADDED' ? 'border-teal-800 text-teal-400' : file.outcome === 'SKIPPED' ? 'border-slate-700 text-slate-400' : file.outcome === 'MISSING' ? 'border-amber-800 text-amber-400' : 'border-red-800 text-red-400'">{{ file.outcome }}</span>
+                    <span class="min-w-0 flex-1 truncate text-slate-300">{{ file.relative_path }}</span>
+                    <span class="hidden text-slate-500 md:inline">{{ file.artist || '' }}<span v-if="file.album"> · {{ file.album }}</span></span>
+                    <span class="tabular-nums text-slate-500">{{ file.duration_seconds ? formatDuration(file.duration_seconds) : '' }}</span>
+                    <span v-if="file.detail" class="w-full pl-2 text-[10px] text-slate-600">{{ file.detail }}</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </li>
         </ul>
@@ -146,6 +163,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { api, ApiError } from '../services/api'
+import { formatDuration } from '../services/format'
 
 const auth = useAuthStore()
 const tabs = [
@@ -167,6 +185,24 @@ const scanning = ref(false)
 const sourceCreating = ref(false)
 const sourceForm = reactive({ name: '', base_relative_path: '' })
 const scanOwners = reactive({})
+const details = reactive({})
+
+async function toggleDetails(source) {
+  const id = source.source_id
+  const current = details[id]
+  if (current?.open) {
+    current.open = false
+    return
+  }
+  details[id] = { open: true, loading: true, error: '', files: [] }
+  try {
+    details[id].files = await api.scanJobFiles(source.last_scan_job_id)
+  } catch {
+    details[id].error = 'No se pudo cargar el informe del escaneo.'
+  } finally {
+    details[id].loading = false
+  }
+}
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString('es') : ''

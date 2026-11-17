@@ -20,6 +20,7 @@ class SourceOut(BaseModel):
     created_at: datetime
     copies: int
     scan_jobs: int
+    last_scan_job_id: int | None = None
 
 
 class ScanRequest(BaseModel):
@@ -87,3 +88,16 @@ class PermissionAuditPage(BaseModel):
 class ModerateUnpublishOut(BaseModel):
     location_id: int
     visibility: str
+
+
+class ScanJobFileOut(BaseModel):
+    scan_job_file_id: int
+    relative_path: str
+    outcome: str
+    track_id: int | None
+    title: str | None
+    artist: str | None
+    album: str | None
+    duration_seconds: int | None
+    detail: str | None
+    created_at: datetime

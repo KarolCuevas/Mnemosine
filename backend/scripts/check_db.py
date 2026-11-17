@@ -26,6 +26,7 @@ EXPECTED_TABLES = [
     "PLAYLIST",
     "PLAYLIST_TRACK",
     "FILE_OPERATION",
+    "SCAN_JOB_FILE",
 ]
 
 
