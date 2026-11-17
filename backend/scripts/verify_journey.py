@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import wave
+import hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -165,6 +166,29 @@ def main() -> int:
         check("A descarga: bytes íntegros y adjunto",
               download.status_code == 200 and download.content == wav_bytes and "attachment" in disposition)
         check("B no puede descargar la copia de A → 404", b.get(f"/api/tracks/{track_id}/download").status_code == 404)
+
+        print("== Dos usuarios, mismos bytes ==")
+        same_bytes = b.post(
+            "/api/tracks/upload",
+            files={"file": ("mismos-bytes.wav", wav_bytes, "audio/x-wav")},
+            data={"title": "Copia de B", "artist": "Kältmare", "album": "Sol"},
+            headers={"X-CSRF-Token": b.cookies.get("mnemosine_csrf")},
+        )
+        check("B sube los mismos bytes → 201", same_bytes.status_code == 201)
+        b_track = same_bytes.json().get("track_id") if same_bytes.status_code == 201 else -1
+        check("B ve su copia en su biblioteca", b.get("/api/library").json()["total"] == 1)
+        check("A ve solo la suya (no la copia de B)", a.get("/api/library").json()["total"] == 1)
+        check("A no puede ver la copia de B → 404", a.get(f"/api/tracks/{b_track}").status_code == 404)
+        check("B puede reproducir su copia → 200", b.get(f"/api/tracks/{b_track}/audio").status_code == 200)
+        check("B puede descargar su copia → 200", b.get(f"/api/tracks/{b_track}/download").status_code == 200)
+        with repos_db.read_only() as cursor:
+            cursor.execute(
+                "SELECT DISTINCT sha256 FROM TRACK_LOCATION l JOIN TRACK t ON t.track_id = l.track_id "
+                "WHERE t.track_id IN (%s, %s)",
+                (track_id, b_track),
+            )
+            hashes = [row["sha256"] for row in cursor.fetchall()]
+        check("ambos usuarios poseen copias con el mismo SHA-256", len(hashes) == 1 and hashes[0] == hashlib.sha256(wav_bytes).hexdigest())
 
         print("== Registro de operaciones ==")
         with repos_db.read_only() as cursor:

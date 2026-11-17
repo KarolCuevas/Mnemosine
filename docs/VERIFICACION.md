@@ -208,7 +208,41 @@ Fecha: 16 de noviembre de 2026.
    revalidada. Docker hubo que levantarlo de nuevo tras un cierre inesperado;
    todas las verificaciones re-ejecutadas y en verde.
 
+## Fase 6 — Validación y entrega (H6)
+
+- Rendimiento con 10.000 canciones (`scripts.verify_perf`): la COUNT tenía un
+  plan pésimo (join temprano + ref=const, ~2,1 s); reescrita con EXISTS
+  (cierre al primer match, ~80 ms) y `ORDER BY location_id DESC` (índice).
+  Todas las mediciones bajo el umbral SRS (≤ 2 s): SQL entre 5–77 ms; vía HTTP
+  (×5, mediana): búsqueda por título 208 ms, artista 160 ms, página profunda 131 ms.
+  La biblioteca devuelve resultados en ~60–200 ms; el objetivo del SRS se cumple.
+- Respaldo verificado de punta a punta: `scripts.backup` (mysqldump + audio +
+  manifiesto con COUNT(*) exacto por tabla y sha256 del dump) →
+  `scripts.restore` verifica sha256, replica en `mnemosine_restore` nuevo y
+  compara **los 20 conteos y los 12 archivos de audio** con el manifiesto →
+  «RESTAURACIÓN VERIFICADA». Antes, el manifiesto usaba
+  information_schema.TABLE_ROWS (estimado) y daba falsos «DIFIERE»; corregido.
+- Migración `0012`/`0013` aplicadas en este equipo; `check_db` reporta 20 tablas.
+- Journey: añadida la sección «dos usuarios, mismos bytes» (permisos
+  independientes, copias independientes, hash idéntico) → **30/30**.
+- e2e con Playwright (D11): entorno temporal aislado (mnemosine_e2e :8010/:5174)
+  con login → /biblioteca → logout → /acceso, sin errores de página.
+  `python -m scripts.e2e` orquesta y limpia todo al terminar.
+- Documentación: `docs/MANUAL.md` (recorrido completo) y `docs/DESPLIEGUE.md`
+  (HTTPS con Caddy/nginx, `SESSION_COOKIE_SECURE`, checklist de publicación,
+  actualización).
+- Limitación conocida y documentada: la DDL de migraciones no promete rollback
+  transaccional (commit implícito de MySQL); el ejecutor se detiene ante fallos.
+
 ## Pendiente
+
+- Prueba visual móvil de la interfaz en un navegador real (Chrome/Firefox en
+  escritorio y Chrome Android o simulación device) — la aplicación es
+  adaptativa, pero falta el check de aceptación final.
+- Commit y push de Fase 6 (pendiente de tu ok: `main` va por delante de origin).
+- La decisión D11 (Playwright) ya tiene su primer e2e; H6 deja el terreno para
+  la suite completa.
+
 
 - Demo del recorrido H3 en navegador (registro → carga → biblioteca → búsqueda →
   reproducción → descarga) como aceptación visual del usuario.

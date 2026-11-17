@@ -32,22 +32,27 @@ def list_library(*, owner_id: int, q: str | None, page: int, page_size: int) -> 
     page_size = min(max(page_size, 1), 100)
     offset = (page - 1) * page_size
 
-    with db.read_only() as cursor:
-        if q:
-            where = (
-                "l.owner_user_id = %s AND (LOCATE(%s, t.title) > 0 OR LOCATE(%s, ar.name) > 0 "
-                "OR (a.title IS NOT NULL AND LOCATE(%s, a.title) > 0))"
+    def _where(q_value: str | None, owner: int) -> tuple[str, tuple]:
+        # LOCATE no se beneficia de índices; EXISTS se corta al primer
+        # artista/álbum que coincida y evita evaluar todo el join.
+        if q_value:
+            return (
+                "l.owner_user_id = %s AND (LOCATE(%s, t.title) > 0 "
+                "OR EXISTS (SELECT 1 FROM TRACK_ARTIST ta JOIN ARTIST ar ON ar.artist_id = ta.artist_id "
+                "           WHERE ta.track_id = t.track_id AND LOCATE(%s, ar.name) > 0) "
+                "OR EXISTS (SELECT 1 FROM ALBUM a WHERE t.album_id = a.album_id "
+                "           AND a.title IS NOT NULL AND LOCATE(%s, a.title) > 0))",
+                (owner, q_value, q_value, q_value),
             )
-            params = (owner_id, q, q, q)
-        else:
-            where = "l.owner_user_id = %s"
-            params = (owner_id,)
+        return ("l.owner_user_id = %s", (owner,))
+
+    with db.read_only() as cursor:
+        q_value = (q or "").strip() or None
+        where, params = _where(q_value, owner_id)
 
         cursor.execute(
-            f"SELECT COUNT(DISTINCT l.location_id) AS total "
+            f"SELECT COUNT(*) AS total "
             f"FROM TRACK_LOCATION l JOIN TRACK t ON t.track_id = l.track_id "
-            f"LEFT JOIN ALBUM a ON a.album_id = t.album_id "
-            f"JOIN TRACK_ARTIST ta ON ta.track_id = t.track_id JOIN ARTIST ar ON ar.artist_id = ta.artist_id "
             f"WHERE {where}",
             params,
         )
@@ -56,14 +61,13 @@ def list_library(*, owner_id: int, q: str | None, page: int, page_size: int) -> 
         cursor.execute(
             f"SELECT l.location_id, l.track_id, t.title, t.duration_seconds, t.track_number, "
             f"       a.title AS album, l.size_bytes, l.availability, l.visibility, l.created_at AS added_at, "
-            f"       GROUP_CONCAT(DISTINCT ar.name ORDER BY ta.position SEPARATOR ', ') AS artists "
+            f"       (SELECT GROUP_CONCAT(DISTINCT ar.name ORDER BY ta.position SEPARATOR ', ') "
+            f"        FROM TRACK_ARTIST ta JOIN ARTIST ar ON ar.artist_id = ta.artist_id "
+            f"        WHERE ta.track_id = t.track_id) AS artists "
             f"FROM TRACK_LOCATION l JOIN TRACK t ON t.track_id = l.track_id "
             f"LEFT JOIN ALBUM a ON a.album_id = t.album_id "
-            f"JOIN TRACK_ARTIST ta ON ta.track_id = t.track_id JOIN ARTIST ar ON ar.artist_id = ta.artist_id "
             f"WHERE {where} "
-            f"GROUP BY l.location_id, l.track_id, t.title, t.duration_seconds, t.track_number, a.title, "
-            f"         l.size_bytes, l.availability, l.visibility, l.created_at "
-            f"ORDER BY l.created_at DESC LIMIT %s OFFSET %s",
+            f"ORDER BY l.location_id DESC LIMIT %s OFFSET %s",
             (*params, page_size, offset),
         )
         items = cursor.fetchall()

@@ -23,9 +23,10 @@ Reglas del plan maestro que este arranque respeta:
 Estado de ejecución: **Fase 0 (documentada y decisiones aprobadas), Fase 1, Fase 2
 (cuentas, invitaciones, sesiones revocables y aislamiento A/B/admin, con ajustes D4/D8/D13),
 Fase 3 (carga privada, biblioteca, búsqueda, reproductor y descarga propia), Fase 4
-(compartición con declaración, descubrimiento, revocación en caliente y listas) y Fase 5
-(fuentes, escaneos, disponibilidad, operaciones y administración) completadas y verificadas
-el 17/11/2026. Pendiente: Fase 6 (validación final H6) y demo completa.**
+(compartición con declaración, descubrimiento, revocación en caliente y listas), Fase 5
+(fuentes, escaneos, disponibilidad, operaciones y administración) y Fase 6
+(rendimiento 10.000 canciones, respaldo/restauración verificados, e2e, manual)
+completadas y verificadas el 17/11/2026. Restante: prueba visual móvil y push.**
 
 ## Fase 0 — Acuerdos y diseño (H0, ≈2–3 días)
 

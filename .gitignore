@@ -16,3 +16,6 @@ backups/
 *.log
 .DS_Store
 Thumbs.db
+CZM ONLY.md
+test-results/
+playwright-report/
