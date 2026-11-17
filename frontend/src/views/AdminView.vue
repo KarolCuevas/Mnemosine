@@ -284,9 +284,30 @@ async function createSource() {
   }
 }
 
+async function refreshSourceDetails(sourceId) {
+  const current = details[sourceId]
+  if (!current?.open) return
+  const source = sources.value.find((entry) => entry.source_id === sourceId)
+  current.loading = true
+  current.error = ''
+  try {
+    current.files = source?.last_scan_job_id ? await api.scanJobFiles(source.last_scan_job_id) : []
+  } catch {
+    current.error = 'No se pudo cargar el informe del escaneo.'
+  } finally {
+    current.loading = false
+  }
+}
+
 async function scan(sourceId) {
   scanning.value = true
   scanStatusMessage.value = ''
+  const existingDetail = details[sourceId]
+  if (existingDetail?.open) {
+    existingDetail.loading = true
+    existingDetail.files = []
+    existingDetail.error = ''
+  }
   try {
     const job = await api.scanSource(sourceId, Number(scanOwners[sourceId]))
     scanStatusMessage.value = `Escaneo #${job.scan_job_id} en marcha…`
@@ -298,8 +319,14 @@ async function scan(sourceId) {
       if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(current.status)) break
     }
     await loadSources()
+    await refreshSourceDetails(sourceId)
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : 'No se pudo lanzar el escaneo.'
+    const current = details[sourceId]
+    if (current?.open) {
+      current.loading = false
+      current.error = 'No se pudo refrescar el informe.'
+    }
   } finally {
     scanning.value = false
   }
