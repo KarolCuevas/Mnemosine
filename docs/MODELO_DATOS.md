@@ -1,6 +1,6 @@
 # Guía para diseñar la base de datos
 
-Las migraciones numeradas viven en `database/migrations/` (0001–0008) y se
+Las migraciones numeradas viven en `database/migrations/` (0001–0011) y se
 aplican con `python -m scripts.migrate`. El detalle ejecutable está en el DER
 inicial del repo. No sustituye el DER ni el diccionario del SRS.
 

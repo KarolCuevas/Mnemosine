@@ -7,6 +7,7 @@
           <RouterLink :to="{ name: 'biblioteca' }" class="rounded-lg px-3 py-1.5 text-sm text-slate-300 transition hover:text-teal-300">Mi biblioteca</RouterLink>
           <RouterLink :to="{ name: 'descubrir' }" class="rounded-lg px-3 py-1.5 text-sm text-slate-300 transition hover:text-teal-300">Descubrir</RouterLink>
           <RouterLink :to="{ name: 'listas' }" class="rounded-lg px-3 py-1.5 text-sm text-slate-300 transition hover:text-teal-300">Listas</RouterLink>
+          <RouterLink v-if="auth.user?.role === 'ADMIN'" :to="{ name: 'admin' }" class="rounded-lg border border-teal-900 px-3 py-1.5 text-sm text-teal-300 transition hover:border-teal-600">Administración</RouterLink>
           <RouterLink :to="{ name: 'cargar' }" class="rounded-lg bg-teal-500 px-3 py-1.5 text-sm font-medium text-slate-950 transition hover:bg-teal-400">Cargar</RouterLink>
           <span class="hidden text-sm text-slate-500 sm:inline">{{ auth.user?.display_name || auth.user?.username }}</span>
           <button type="button" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400 hover:text-teal-300" @click="onLogout">

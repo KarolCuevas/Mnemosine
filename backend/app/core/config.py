@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 50 * 1024 * 1024
     max_user_quota_bytes: int = 5 * 1024 * 1024 * 1024
     storage_root: str | None = None    # por defecto <repo>/storage
+    # Escaneos (Fase 5). Las fuentes registradas solo pueden vivir DENTRO de esta
+    # raíz (ninguna fuente puede referenciar rutas fuera de ella). Por defecto,
+    # <repo>/storage; apúntala a tu biblioteca si quieres importarla.
+    scan_root: str | None = None
 
 
 @lru_cache

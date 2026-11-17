@@ -100,5 +100,23 @@ export const api = {
   deletePlaylist: (id) => request(`/api/playlists/${id}`, { method: 'DELETE' }),
   addTrackToPlaylist: (playlistId, trackId) => request(`/api/playlists/${playlistId}/tracks`, { method: 'POST', body: { track_id: trackId } }),
   removeTrackFromPlaylist: (playlistId, trackId) => request(`/api/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE' }),
-  reorderPlaylist: (playlistId, trackIds) => request(`/api/playlists/${playlistId}/order`, { method: 'PUT', body: { track_ids: trackIds } })
+  reorderPlaylist: (playlistId, trackIds) => request(`/api/playlists/${playlistId}/order`, { method: 'PUT', body: { track_ids: trackIds } }),
+  adminUsers: () => request('/api/admin/users'),
+  deactivateUser: (userId) => request(`/api/admin/users/${userId}/deactivate`, { method: 'POST' }),
+  activateUser: (userId) => request(`/api/admin/users/${userId}/activate`, { method: 'POST' }),
+  setUserRole: (userId, role) => request(`/api/admin/users/${userId}/role`, { method: 'POST', body: { role } }),
+  sources: () => request('/api/admin/sources'),
+  createSource: (payload) => request('/api/admin/sources', { method: 'POST', body: payload }),
+  scanSource: (sourceId, ownerUserId) => request(`/api/admin/sources/${sourceId}/scan`, { method: 'POST', body: { owner_user_id: ownerUserId } }),
+  scanJob: (jobId) => request(`/api/admin/scan-jobs/${jobId}`),
+  setSourceStatus: (sourceId, status) => request(`/api/admin/sources/${sourceId}/status`, { method: 'POST', body: { status } }),
+  operations: ({ type = '', page = 1, pageSize = 25 } = {}) => {
+    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+    if (type) params.set('type', type)
+    return request(`/api/admin/operations?${params.toString()}`)
+  },
+  permissionAudit: ({ page = 1, pageSize = 25 } = {}) => {
+    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+    return request(`/api/admin/permission-audit?${params.toString()}`)
+  }
 }

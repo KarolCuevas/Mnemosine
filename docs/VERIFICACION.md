@@ -144,6 +144,45 @@ Fecha: 16 de noviembre de 2026.
 - `@playwright/test` queda como dependencia dev (D11, e2e en H6); jsdom
   temporal retirado.
 
+## Fase 5 — Fuentes, escaneos, disponibilidad y administración (H5)
+
+- `0011_fuente_scan_device.sql`: dispositivo lógico «Servidor de fuentes» para
+  fuentes registradas por el administrador (la fuente central 9001 sigue para
+  cargas).
+- Refactor: sonda de audio compartida (`services/audio.py`: probe + etiquetas
+  fáciles de mutagen) y catálogo compartida (`services/catalog.py`); sin
+  duplicar lógica entre carga y escaneo.
+- Fuentes (`POST/GET /api/admin/sources`): rutas RELATIVAS a `SCAN_ROOT`
+  (por defecto `<repo>/storage`); rechazan absolutas, unidades y `..` (422).
+  Crear la fuente valida la carpeta; desconexión vía `POST .../status`
+  (conserva el catálogo).
+- Escaneo (`POST .../scan` → 202 + hilo de fondo; `GET /api/admin/scan-jobs/{id}`):
+  propietario EXPLÍCITO obligatorio (D7); etiquetas fáciles de mutagen para
+  título/artista/álbum/pista (fallback: nombre de archivo y «Desconocido»);
+  SHA-256, tamaño, MIME real; transacción por archivo; FALLOS por archivo no
+  abortan el lote; contadores y `FILE_OPERATION(SCAN)`; la disponibilidad se
+  reconcilia al final (detecta MISSING restaurados).
+- Reescanear NO duplica rutas ni cambia dueños/permisos
+  (UNIQUE(source_id, relative_path)) — verificado 0 añadidas/2 omitidas en la
+  segunda pasada.
+- Disponibilidad: borrar el archivo → MISSING; restaurarlo → AVAILABLE; la
+  fuente desconectada conserva el catálogo y rechaza escaneos (422).
+- Administración completa: `GET /api/admin/operations` (filtro UPLOAD/DOWNLOAD/
+  SCAN, paginado) y `GET /api/admin/permission-audit` (paginado); cambio de rol
+  `POST /api/admin/users/{id}/role` (ROLE_CHANGE auditado; no puedes cambiar tu
+  propio rol); moderación `POST /api/admin/locations/{id}/unpublish`
+  (despublica cualquier copia PUBLIC, auditada como UNPUBLISH).
+- Verificación: `scripts/verify_phase5` — **24/24** (fuente, escapes rechazados,
+  escaneo completo, reescaneo idempotente, MISSING/AVAILABLE, catálogo
+  conservado, operaciones/auditoría, roles auditados, moderación, USER sin
+  acceso al panel). Sin regresiones: journey 23/23, sharing 37/37.
+- Frontend: `/admin` con 4 pestañas (Cuentas, Fuentes y escaneos con progreso
+  en vivo y elección de propietario, Operaciones, Auditoría); visible solo para
+  ADMIN; `npm run build` correcto (48 módulos); nav con enlace de administración
+  solo para ADMIN.
+- Modo `uvicorn --reload` sigue sin ser fiable (OneDrive): el proceso de
+  desarrollo se reinicia manualmente sin `--reload`.
+
 ## Pendiente
 
 - Demo del recorrido H3 en navegador (registro → carga → biblioteca → búsqueda →

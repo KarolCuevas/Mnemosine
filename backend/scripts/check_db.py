@@ -63,7 +63,7 @@ def main() -> int:
         print("Aplica las migraciones con: python -m scripts.migrate", file=sys.stderr)
         return 1
 
-    print(f"Conexión a MySQL correcta; {len(EXPECTED_TABLES)} tablas presentes y cuentas, sesiones y permisos listos para H2.")
+    print(f"Conexión a MySQL correcta; {len(EXPECTED_TABLES)} tablas presentes (Fase 5 lista para H6).")
     return 0
 
 

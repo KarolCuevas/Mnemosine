@@ -8,6 +8,7 @@ import DescubrirView from '../views/DescubrirView.vue'
 import ColeccionView from '../views/ColeccionView.vue'
 import ListasView from '../views/ListasView.vue'
 import ListaDetalleView from '../views/ListaDetalleView.vue'
+import AdminView from '../views/AdminView.vue'
 
 const routes = [
   { path: '/acceso', name: 'acceso', component: AccesoView, meta: { title: 'Acceso' } },
@@ -18,6 +19,7 @@ const routes = [
   { path: '/descubrir/:username', name: 'coleccion', component: ColeccionView, meta: { requiresAuth: true, title: 'Colección pública' } },
   { path: '/listas', name: 'listas', component: ListasView, meta: { requiresAuth: true, title: 'Mis listas' } },
   { path: '/listas/:id(\\d+)', name: 'lista', component: ListaDetalleView, meta: { requiresAuth: true, title: 'Lista' } },
+  { path: '/admin', name: 'admin', component: AdminView, meta: { requiresAuth: true, requiresAdmin: true, title: 'Administración' } },
   { path: '/', redirect: '/biblioteca' },
   { path: '/:pathMatch(.*)*', redirect: '/biblioteca' }
 ]
@@ -34,6 +36,9 @@ router.beforeEach(async (to) => {
   }
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'acceso', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.requiresAdmin && auth.user?.role !== 'ADMIN') {
+    return { name: 'biblioteca' }
   }
   if (to.name === 'acceso' && auth.isAuthenticated) {
     return { name: 'biblioteca' }

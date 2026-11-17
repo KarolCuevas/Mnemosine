@@ -15,7 +15,7 @@ de carga y cuota, sesión, etc.).
 | D4 | Sesión | Cookie **HttpOnly + SameSite=Lax + Secure cuando hay HTTPS** (variable `SESSION_COOKIE_SECURE`, obligatoria tras HTTPS), token **CSRF** (doble envío con HMAC) en mutaciones, **expiración deslizante de 7 días Y límite absoluto de sesión de 30 días** (configurables); tokens opacos hasheados en `USER_SESSION`; `created_at` ancla el límite absoluto | Autenticación (H2) |
 | D5 | Hash de contraseñas | **argon2-cffi**; fijar en `requirements.lock.txt` al implementar | H2 |
 | D6 | Auditoría de permisos | Tabla **PERMISSION_AUDIT** además de `FILE_OPERATION` (que solo enumera UPLOAD/DOWNLOAD/SCAN). RNF-14: cambios de permisos trazables | Modelo de datos (H1) |
-| D7 | Escaneos | **Propietario explícito antes de importar**; nunca inferido de `SOURCE.owner_user_id` (puede ser NULL). Regla fijada ahora; implementación en H5 | Escaneo (H5) |
+| D7 | Escaneos | **Propietario explícito antes de importar** (obligatorio por escaneo); nunca inferido de `SOURCE.owner_user_id` (puede ser NULL). **IMPLEMENTADO en H5 (2026-11-17)** | Escaneo (H5) ✓ |
 | D8 | Declaración de autorización | La declaración va **asociada a la copia publicada** (tabla `AUTHORIZATION_DECLARATION`, ligada a `TRACK_LOCATION`), no solo en `TRACK_SHARE` (que cubre destinatarios individuales y no la publicación pública). Kinds: `PUBLICATION`, `DOWNLOAD`. Copia coherente también en `PERMISSION_AUDIT.declaration` para la traza. **IMPLEMENTADO en H4 (2026-11-16)** | Compartición (H4) ✓ |
 | D9 | Sesiones de usuario | `USER_SESSION` con `revoked_at`; desactivación de cuenta revoca todas sus sesiones en caliente | H2 |
 | D10 | Nombres en UI vs SRS | Identificadores SQL en inglés (TRACK, TRACK_LOCATION…); UI y docs en español | H1 |
