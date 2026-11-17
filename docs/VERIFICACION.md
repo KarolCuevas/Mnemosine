@@ -127,6 +127,23 @@ Fecha: 16 de noviembre de 2026.
   OneDrive en este equipo — conviene arrancarlo sin `--reload` y reiniciarlo
   al editar.
 
+## Incidencia: página en blanco (17/11/2026)
+
+- Síntoma: la web se veía en blanco salvo el reproductor; replicado con
+  Playwright: Vue no montaba; `GET /src/assets/main.css` → 500
+  (`@tailwindcss/vite:generate:serve`: «Cannot convert undefined or null to
+  object»).
+- Causa: `node_modules` en disco traía `@tailwindcss/vite@4.0.0` con
+  `@tailwindcss/node`/`oxide@4.3.5` (el árbol quedó desalineado respecto al
+  lock tras operaciones locales de npm).
+- Solución: alinear la familia Tailwind a **4.3.5** (`tailwindcss` +
+  `@tailwindcss/vite` en package.json y lock); `npm run build` y dev server
+  correctos; `npm ls` sin marcas `invalid`.
+- También: `uvicorn --reload` sigue sin ser fiable aquí (OneDrive); el 8000
+  se cayó con un fallo de terminal y se rearranca manualmente sin `--reload`.
+- `@playwright/test` queda como dependencia dev (D11, e2e en H6); jsdom
+  temporal retirado.
+
 ## Pendiente
 
 - Demo del recorrido H3 en navegador (registro → carga → biblioteca → búsqueda →
