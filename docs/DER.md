@@ -228,9 +228,10 @@ gestión.
    (`revoked_at NULL`, nuevos flags). `declaration` registra la declaración de
    autorización (quién/cuándo/alcance en texto).
 6. **PLAYLIST_TRACK**: `PK(playlist_id, track_id)` (la canción aparece una vez
-   por lista, SRS) + `UNIQUE(playlist_id, position)`. Reordenar dentro de una
-   transacción con posiciones temporales negativas o re-numeración para no
-   violar la unicidad intermedia.
+   por lista, SRS) + `UNIQUE(playlist_id, position)`. `position` es INT con
+   signo desde la migración 0010: el reordenamiento usa posiciones temporales
+   negativas en la misma transacción; las posiciones visibles son siempre ≥ 1
+   (CHECK `chk_playlist_track_position`).
 7. **Deshacer acciones**: FKs `CASCADE` solo en asociaciones
    (TRACK_ARTIST, ALBUM_ARTIST, PLAYLIST_TRACK, USER_SESSION); `RESTRICT` en
    recursos con dependencias (TRACK_LOCATION→SOURCE/USER); `SET NULL` en

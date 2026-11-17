@@ -84,5 +84,21 @@ export const api = {
   },
   getTrack: (id) => request(`/api/tracks/${id}`),
   audioUrl: (id) => `/api/tracks/${id}/audio`,
-  downloadUrl: (id) => `/api/tracks/${id}/download`
+  downloadUrl: (id) => `/api/tracks/${id}/download`,
+  sharedWithMe: () => request('/api/library/shared'),
+  discovery: () => request('/api/discovery'),
+  discoveryCatalog: (username) => request(`/api/discovery/${encodeURIComponent(username)}`),
+  locationSummary: (locationId) => request(`/api/locations/${locationId}`),
+  setVisibility: (locationId, payload) => request(`/api/locations/${locationId}/visibility`, { method: 'POST', body: payload }),
+  setPublicDownload: (locationId, payload) => request(`/api/locations/${locationId}/public-download`, { method: 'POST', body: payload }),
+  createShare: (locationId, payload) => request(`/api/locations/${locationId}/shares`, { method: 'POST', body: payload }),
+  revokeShare: (locationId, recipientId) => request(`/api/locations/${locationId}/shares/${recipientId}`, { method: 'DELETE' }),
+  playlists: () => request('/api/playlists'),
+  createPlaylist: (payload) => request('/api/playlists', { method: 'POST', body: payload }),
+  playlistDetail: (id) => request(`/api/playlists/${id}`),
+  renamePlaylist: (id, payload) => request(`/api/playlists/${id}`, { method: 'PATCH', body: payload }),
+  deletePlaylist: (id) => request(`/api/playlists/${id}`, { method: 'DELETE' }),
+  addTrackToPlaylist: (playlistId, trackId) => request(`/api/playlists/${playlistId}/tracks`, { method: 'POST', body: { track_id: trackId } }),
+  removeTrackFromPlaylist: (playlistId, trackId) => request(`/api/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE' }),
+  reorderPlaylist: (playlistId, trackIds) => request(`/api/playlists/${playlistId}/order`, { method: 'PUT', body: { track_ids: trackIds } })
 }

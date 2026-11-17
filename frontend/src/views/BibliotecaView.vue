@@ -5,6 +5,8 @@
         <span class="text-lg font-semibold tracking-wide text-teal-300">Mnemosine</span>
         <nav aria-label="Principal" class="flex items-center gap-3">
           <RouterLink :to="{ name: 'biblioteca' }" class="rounded-lg px-3 py-1.5 text-sm text-slate-300 transition hover:text-teal-300">Mi biblioteca</RouterLink>
+          <RouterLink :to="{ name: 'descubrir' }" class="rounded-lg px-3 py-1.5 text-sm text-slate-300 transition hover:text-teal-300">Descubrir</RouterLink>
+          <RouterLink :to="{ name: 'listas' }" class="rounded-lg px-3 py-1.5 text-sm text-slate-300 transition hover:text-teal-300">Listas</RouterLink>
           <RouterLink :to="{ name: 'cargar' }" class="rounded-lg bg-teal-500 px-3 py-1.5 text-sm font-medium text-slate-950 transition hover:bg-teal-400">Cargar</RouterLink>
           <span class="hidden text-sm text-slate-500 sm:inline">{{ auth.user?.display_name || auth.user?.username }}</span>
           <button type="button" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400 hover:text-teal-300" @click="onLogout">
@@ -67,6 +69,24 @@
         <span class="text-sm text-slate-400">Página {{ page }} de {{ totalPages }}</span>
         <button type="button" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400 hover:text-teal-300 disabled:opacity-40" :disabled="page >= totalPages" @click="goToPage(page + 1)">Siguiente</button>
       </nav>
+
+      <section v-if="sharedItems.length" aria-labelledby="compartidas-heading" class="mt-10">
+        <h2 id="compartidas-heading" class="text-lg font-semibold text-slate-200">Compartidas contigo</h2>
+        <p class="mt-1 text-xs text-slate-500">Copias que otras cuentas compartieron contigo. Los permisos pueden haber sido revocados: cada reproducción se comprueba en el servidor.</p>
+        <ul class="mt-3 divide-y divide-slate-800 rounded-xl border border-slate-800">
+          <li v-for="(item, index) in sharedItems" :key="item.location_id" class="flex items-center gap-3 px-4 py-3">
+            <button type="button" class="rounded-full bg-slate-800 p-2 text-teal-300 transition hover:bg-teal-500 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="!item.can_stream" :aria-label="`Reproducir ${item.title}`" @click="playShared(index)">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <div class="min-w-0 flex-1">
+              <RouterLink :to="{ name: 'detalle', params: { id: item.track_id } }" class="block truncate text-sm font-medium text-slate-100 hover:text-teal-300">{{ item.title }}</RouterLink>
+              <span class="block truncate text-xs text-slate-500">{{ item.artists }} · compartida por {{ item.owner_username }}</span>
+            </div>
+            <span v-if="item.can_download" class="text-xs text-slate-500">descarga permitida</span>
+          </li>
+        </ul>
+      </section>
     </section>
   </main>
 </template>
@@ -90,6 +110,7 @@ const page = ref(1)
 const pageSize = 24
 const loading = ref(false)
 const error = ref('')
+const sharedItems = ref([])
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 const statusMessage = computed(() => (query.value && !loading.value ? `${total.value} ${total.value === 1 ? 'resultado' : 'resultados'}` : ''))
@@ -125,6 +146,14 @@ function playFromList(index) {
   player.setQueue(items.value, index)
 }
 
+function playShared(index) {
+  const playable = sharedItems.value.filter((item) => item.can_stream)
+  const target = sharedItems.value[index]
+  const playableIndex = playable.indexOf(target)
+  if (playableIndex === -1) return
+  player.setQueue(playable.map((item) => ({ ...item, available: true })), playableIndex)
+}
+
 function goToPage(target) {
   page.value = target
   load()
@@ -135,5 +164,16 @@ async function onLogout() {
   router.push('/acceso')
 }
 
-onMounted(load)
+async function loadShared() {
+  try {
+    sharedItems.value = (await api.sharedWithMe()).items
+  } catch {
+    sharedItems.value = []
+  }
+}
+
+onMounted(() => {
+  load()
+  loadShared()
+})
 </script>

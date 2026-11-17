@@ -3,13 +3,28 @@
 from app.repositories import db
 
 
-def mark_availability(*, location_id: int, track_id: int, availability: str) -> None:
-    """Escribe disponibilidad real tras una comprobación en disco (nunca sin verificarla)."""
-    with db.transaction() as cursor:
+def list_shared_with_me(*, user_id: int) -> list[dict]:
+    """Copias compartidas conmigo (share activo), siempre disponibles para su acción."""
+    with db.read_only() as cursor:
         cursor.execute(
-            "UPDATE TRACK_LOCATION SET availability = %s WHERE location_id = %s AND track_id = %s",
-            (availability, location_id, track_id),
+            "SELECT l.location_id, l.track_id, t.title, t.duration_seconds, t.track_number, "
+            "       a.title AS album, l.size_bytes, l.availability, l.mime_type, "
+            "       s.can_stream, s.can_download, u.username AS owner_username, "
+            "       GROUP_CONCAT(DISTINCT ar.name ORDER BY ta.position SEPARATOR ', ') AS artists "
+            "FROM TRACK_SHARE s "
+            "JOIN TRACK_LOCATION l ON l.location_id = s.location_id "
+            "JOIN TRACK t ON t.track_id = l.track_id "
+            "LEFT JOIN ALBUM a ON a.album_id = t.album_id "
+            "JOIN USER_ACCOUNT u ON u.user_id = l.owner_user_id "
+            "JOIN TRACK_ARTIST ta ON ta.track_id = t.track_id "
+            "JOIN ARTIST ar ON ar.artist_id = ta.artist_id "
+            "WHERE s.recipient_user_id = %s AND s.revoked_at IS NULL "
+            "GROUP BY l.location_id, l.track_id, t.title, t.duration_seconds, t.track_number, a.title, "
+            "         l.size_bytes, l.availability, l.mime_type, s.can_stream, s.can_download, u.username "
+            "ORDER BY s.granted_at DESC",
+            (user_id,),
         )
+        return list(cursor.fetchall())
 
 
 def list_library(*, owner_id: int, q: str | None, page: int, page_size: int) -> dict:
@@ -59,7 +74,10 @@ def list_library(*, owner_id: int, q: str | None, page: int, page_size: int) -> 
 
 
 def get_track_detail(*, track_id: int, user_id: int) -> dict | None:
-    """Detalle de canción si el solicitante posee al menos una copia; si no, None."""
+    """Detalle de canción si el solicitante puede verla (dueño, copia PUBLIC o
+    compartida con él); si no, None (mismo 404, sin revelar existencia)."""
+    from app.services import copies
+
     with db.read_only() as cursor:
         cursor.execute(
             "SELECT t.track_id, t.title, t.duration_seconds, t.track_number, t.disc_number, "
@@ -81,19 +99,10 @@ def get_track_detail(*, track_id: int, user_id: int) -> dict | None:
             (track_id, user_id),
         )
         track["copies"] = list(cursor.fetchall())
-        if not track["copies"]:
-            return None  # mismo 404 que "no existe": no revelar existencia
-        return track
 
-
-def resolve_owned_copy(*, track_id: int, user_id: int) -> dict | None:
-    """Copia del dueño preferentemente disponible; None si no posee ninguna."""
-    with db.read_only() as cursor:
-        cursor.execute(
-            "SELECT location_id, relative_path, size_bytes, mime_type, availability, visibility "
-            "FROM TRACK_LOCATION "
-            "WHERE track_id = %s AND owner_user_id = %s "
-            "ORDER BY (availability = 'AVAILABLE') DESC, created_at LIMIT 1",
-            (track_id, user_id),
-        )
-        return cursor.fetchone()
+    access = copies.access_summary(track_id=track_id, user_id=user_id)
+    if not track["copies"] and not access["can_stream"] and not access["can_download"]:
+        # Sin copia propia y sin acceso por share ni PUBLIC: 404 uniforme.
+        return None
+    track["access"] = access
+    return track

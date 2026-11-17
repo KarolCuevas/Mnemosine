@@ -50,6 +50,12 @@ class CopyOut(BaseModel):
     created_at: datetime
 
 
+class AccessOut(BaseModel):
+    can_stream: bool
+    can_download: bool
+    available: bool
+
+
 class TrackDetail(BaseModel):
     track_id: int
     title: str
@@ -60,6 +66,7 @@ class TrackDetail(BaseModel):
     track_number: int | None
     disc_number: int | None
     copies: list[CopyOut]
+    access: AccessOut
 
 
 class UploadForm(BaseModel):

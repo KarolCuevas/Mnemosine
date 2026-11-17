@@ -4,12 +4,20 @@ import AccesoView from '../views/AccesoView.vue'
 import BibliotecaView from '../views/BibliotecaView.vue'
 import CargarView from '../views/CargarView.vue'
 import DetalleView from '../views/DetalleView.vue'
+import DescubrirView from '../views/DescubrirView.vue'
+import ColeccionView from '../views/ColeccionView.vue'
+import ListasView from '../views/ListasView.vue'
+import ListaDetalleView from '../views/ListaDetalleView.vue'
 
 const routes = [
   { path: '/acceso', name: 'acceso', component: AccesoView, meta: { title: 'Acceso' } },
   { path: '/biblioteca', name: 'biblioteca', component: BibliotecaView, meta: { requiresAuth: true, title: 'Mi biblioteca' } },
   { path: '/biblioteca/cargar', name: 'cargar', component: CargarView, meta: { requiresAuth: true, title: 'Cargar música' } },
   { path: '/cancion/:id(\\d+)', name: 'detalle', component: DetalleView, meta: { requiresAuth: true, title: 'Detalle' } },
+  { path: '/descubrir', name: 'descubrir', component: DescubrirView, meta: { requiresAuth: true, title: 'Descubrir' } },
+  { path: '/descubrir/:username', name: 'coleccion', component: ColeccionView, meta: { requiresAuth: true, title: 'Colección pública' } },
+  { path: '/listas', name: 'listas', component: ListasView, meta: { requiresAuth: true, title: 'Mis listas' } },
+  { path: '/listas/:id(\\d+)', name: 'lista', component: ListaDetalleView, meta: { requiresAuth: true, title: 'Lista' } },
   { path: '/', redirect: '/biblioteca' },
   { path: '/:pathMatch(.*)*', redirect: '/biblioteca' }
 ]

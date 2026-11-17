@@ -91,6 +91,42 @@ Fecha: 16 de noviembre de 2026.
   expuestas (`/api/tracks/*`, `/api/library`).
 - Sin comprobación visual en navegador; el recorrido debe validarse a ojo antes de la demo.
 
+## Fase 4 — Compartición, descubrimiento, revocación y listas (H4)
+
+- `0008` (AUTHORIZATION_DECLARATION) + `0009` (fuente central) + **`0010`**:
+  `PLAYLIST_TRACK.position` pasa a INT con signo para reordenar con posiciones
+  temporales negativas en una transacción (CHECK ajustado; DER actualizado).
+- Permisos de copia solo del dueño: `GET/POST /api/locations/{id}` (publicar/
+  despublicar con declaración `PUBLICATION` asociada a la copia;
+  `public_download_allowed` con declaración `DOWNLOAD`; compartir por
+  destinatario con streams/descarga y declaración; revocar en caliente;
+  `PERMISSION_AUDIT` en todas; re-conceder reactiva con nuevos flags).
+- Descubrimiento con sesión: `GET /api/discovery` (cuentas con copias PUBLIC
+  disponibles) y `GET /api/discovery/{username}` (solo PUBLIC; descarga pública
+  solo con `public_download_allowed`); `GET /api/library/shared` (compartidas
+  conmigo). PUBLIC nunca implica anónimo.
+- Entrega unificada propia/compartida/pública en `services/copies.py`
+  (preferencia propia > compartida > pública; MISSING escribe y se salta la
+  copia; rangos verifican disco en cada solicitud).
+- Detalle visible sin copia propia cuando hay acceso (PUBLIC o share); el
+  SHA-256 solo se muestra al dueño.
+- Listas privadas ordenadas: CRUD + añadir/quitar/reordenar atómico (CHECK ≥ 1
+  visible; temporales negativos permitidos por 0010); borrado de la lista no
+  borra canciones; solo el dueño lee/modifica.
+- Verificación: `scripts/verify_sharing` — **37/37** sobre `mnemosine_test`
+  (declaraciones obligatorias, PUBLISH/UNPUBLISH con audit, descubrimiento,
+  descarga pública autorizada, share + revocación en caliente, ADMIN sin
+  privilegios de contenido, listas, no-borrado físico). Sin regresiones:
+  `verify_journey` 23/23, `verify_isolation` 26/26, `verify_schema` 11/11.
+- Frontend: nav con Mi biblioteca / Descubrir / Listas; sección «Compartidas
+  contigo»; Descubrir + Colección pública (descarga solo con autorización); Listas
+  (crear, renombrar, eliminar, ordenar con subir/bajar, añadir desde la
+  biblioteca y por detalle); panel de permisos en el detalle (declaraciones,
+  compartir/revocar, descarga pública). `npm run build` correcto (47 módulos).
+- Backend en vivo: 27 rutas; `uvicorn --reload` NO recargó los cambios sobre
+  OneDrive en este equipo — conviene arrancarlo sin `--reload` y reiniciarlo
+  al editar.
+
 ## Pendiente
 
 - Demo del recorrido H3 en navegador (registro → carga → biblioteca → búsqueda →

@@ -9,12 +9,10 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.responses import StreamingResponse
 
 from app.core.config import get_settings
-from app.schemas.tracks import LibraryPage, TrackDetail, UploadResponse
+from app.schemas.tracks import LibraryPage, TrackDetail, UploadResponse, AccessOut
 from app.security.deps import CurrentUser, get_current_user, require_csrf
-from app.services import delivery, library, uploads
+from app.services import copies, delivery, library, uploads
 from app.services.delivery import RangeNotSatisfiable
-from app.services.library import mark_availability
-from app.services.permissions import LocationFacts, can
 from app.services.storage import get_storage
 from app.services.uploads import QuotaExceededError, UploadValidationError
 from app.repositories import db, operations
@@ -90,28 +88,14 @@ def track_detail(track_id: int, current: CurrentUser = Depends(get_current_user)
 
 
 def _resolve_delivery(track_id: int, user_id: int, action: str):
-    """Resuelve la copia autorizada y verifica su existencia real en disco."""
-    copy = library.resolve_owned_copy(track_id=track_id, user_id=user_id)
-    if copy is None:
+    """Resuelve la copia autorizada (propia, compartida o PUBLIC) y verifica disco."""
+    copy, state = copies.resolve_for_action(track_id=track_id, user_id=user_id, action=action)
+    if state == "not_found":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No encontrado")
-
-    storage = get_storage()
-    if copy["availability"] != "AVAILABLE" or not storage.exists(copy["relative_path"]):
-        mark_availability(location_id=copy["location_id"], track_id=track_id, availability="MISSING")
+    if state == "unavailable":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail="La copia no está disponible en este momento")
-
-    facts = LocationFacts(
-        owner_user_id=user_id,
-        visibility=copy.get("visibility", "PRIVATE"),
-        public_download_allowed=False,
-        share_stream=False,
-        share_download=False,
-        availability="AVAILABLE",
-    )
-    if not can(actor_user_id=user_id, action=action, facts=facts):  # type: ignore[arg-type]
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
-
+    storage = get_storage()
     fresh_size = storage.size(copy["relative_path"])
     return storage, copy, fresh_size
 

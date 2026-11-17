@@ -21,10 +21,11 @@ Reglas del plan maestro que este arranque respeta:
 - SQL explícito parametrizado, sin ORM; audio fuera de MySQL.
 
 Estado de ejecución: **Fase 0 (documentada y decisiones aprobadas), Fase 1, Fase 2
-(cuentas, invitaciones, sesiones revocables y aislamiento A/B/admin, con ajustes D4/D8/D13)
-y Fase 3 (carga privada, biblioteca, búsqueda, reproductor y descarga propia)
+(cuentas, invitaciones, sesiones revocables y aislamiento A/B/admin, con ajustes D4/D8/D13),
+Fase 3 (carga privada, biblioteca, búsqueda, reproductor y descarga propia) y Fase 4
+(compartición con declaración, descubrimiento, revocación en caliente y listas)
 completadas y verificadas el 16/11/2026. Pendiente: comprobación visual en navegador
-y demo del recorrido completo por el usuario.**
+(H4 incluida) y demo del recorrido completo.**
 
 ## Fase 0 — Acuerdos y diseño (H0, ≈2–3 días)
 

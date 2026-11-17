@@ -70,8 +70,11 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m scripts.migrate
 .\.venv\Scripts\python.exe -m scripts.check_db
 .\.venv\Scripts\python.exe -m scripts.create_admin
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 ##Levantar API
 ```
+
+En este equipo `uvicorn --reload` no detecta bien los cambios (OneDrive): arranca
+sin `--reload` y reinicia el proceso al editar.
 
 `create_admin` crea la primera cuenta ADMIN (la plataforma es por invitación; la
 primera cuenta se crea así). `python -m scripts.verify_schema` y
