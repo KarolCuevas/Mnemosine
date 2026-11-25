@@ -1,5 +1,7 @@
 # Mnemosine — base para comenzar
 
+A Sound Archieve
+
 Esqueleto de desarrollo basado en [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md).
 La lógica de la aplicación queda por implementar. Incluye Vue 3 + Tailwind,
 FastAPI y configuración de MySQL 8.4, usando SQL explícito sin ORM.
