@@ -22,4 +22,5 @@ CZM ONLY.md
 test-results/
 playwright-report/
 .publish/
-.railway/
+.railway/*
+!.railway/railway.ts

@@ -1,0 +1,13 @@
+{
+  "name": "mnemosine-infrastructure",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "railway": "node scripts/railway.mjs"
+  },
+  "devDependencies": {
+    "@railway/cli": "5.76.2",
+    "railway": "3.19.1"
+  }
+}
