@@ -1,16 +1,7 @@
 <template>
-  <main class="min-h-screen bg-slate-950 pb-24 text-slate-100">
-    <header class="border-b border-slate-800">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
-        <span class="text-lg font-semibold tracking-wide text-teal-300">Mnemosine</span>
-        <nav aria-label="Principal" class="flex items-center gap-3 text-sm">
-          <RouterLink :to="{ name: 'biblioteca' }" class="rounded-lg px-3 py-1.5 text-slate-300 transition hover:text-teal-300">Mi biblioteca</RouterLink>
-          <RouterLink :to="{ name: 'descubrir' }" class="rounded-lg px-3 py-1.5 text-slate-300 transition hover:text-teal-300">Descubrir</RouterLink>
-        </nav>
-      </div>
-    </header>
+  <div class="page coleccion-page">
 
-    <section class="mx-auto max-w-5xl px-6 py-6">
+    <section class="page-section">
       <p class="text-xs font-medium uppercase tracking-[0.3em] text-teal-300">Biblioteca pública de</p>
       <h1 class="mt-1 text-3xl font-semibold">@{{ username }}</h1>
       <p class="mt-1 text-sm text-slate-400">{{ items.length }} {{ items.length === 1 ? 'canción pública' : 'canciones públicas' }}</p>
@@ -21,7 +12,7 @@
 
       <ul v-else class="mt-4 divide-y divide-slate-800 rounded-xl border border-slate-800">
         <li v-for="(item, index) in items" :key="item.location_id" class="flex items-center gap-3 px-4 py-3 transition hover:bg-slate-900/60">
-          <button type="button" class="rounded-full bg-slate-800 p-2 text-teal-300 transition hover:bg-teal-500 hover:text-slate-950"
+          <button type="button" class="round-play"
             :aria-label="`Reproducir ${item.title}`" @click="playFromList(index)">
             <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
           </button>
@@ -35,7 +26,7 @@
         </li>
       </ul>
     </section>
-  </main>
+  </div>
 </template>
 
 <script setup>

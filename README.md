@@ -1,10 +1,17 @@
-# Mnemosine — base para comenzar
+# Mnemosine
 
 A Sound Archieve
 
-Esqueleto de desarrollo basado en [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md).
-La lógica de la aplicación queda por implementar. Incluye Vue 3 + Tailwind,
-FastAPI y configuración de MySQL 8.4, usando SQL explícito sin ORM.
+Aplicación de biblioteca musical con cuentas por invitación, cargas privadas,
+reproducción, permisos por copia, listas y administración. Vue 3 + Tailwind,
+FastAPI y MySQL 8.4 con SQL explícito, sin ORM.
+
+La primera entrega del [plan de integraciones](docs/PLAN_INTEGRACIONES.md) añade
+MusicBrainz, un índice local de metadatos y referencias privadas en `/referencias`.
+También permite conectar el Drive de cada usuario y elegir archivos en
+`/conexiones`; su audio aún no se incorpora a la biblioteca. Consulta
+[el estado de las integraciones](docs/INTEGRACIONES.md) y
+[la configuración y prueba de Google](docs/GOOGLE_DRIVE_CONFIGURACION.md).
 
 ## 1. Requisitos
 
@@ -59,7 +66,10 @@ El volumen conserva los datos al detener el contenedor. Las variables iniciales
 solo crean cuentas y base cuando el volumen está vacío: editar `.env` después no
 cambia automáticamente las credenciales existentes.
 
-**Se crea una base vacía.** El modelo de tablas queda para tu implementación.
+Docker crea una base vacía en la primera ejecución. `scripts.migrate` crea y
+actualiza las tablas (migraciones 0001–0017); no edites migraciones ya aplicadas.
+Antes de actualizar una instalación con datos, detén escrituras y ejecuta
+`python -m scripts.backup` desde el entorno virtual del backend.
 
 ## 3. Iniciar el backend
 
@@ -118,6 +128,8 @@ y el destino del proxy en `frontend/vite.config.js`.
 
 ## 5. Dónde continuar
 
+La siguiente ampliación está definida en el [plan de catálogos musicales y almacenamiento](docs/PLAN_INTEGRACIONES.md): MusicBrainz como fuente principal para buscar e indexar nombres, Drive conectado por cada usuario, copias entre Drive y servidor, y almacenamiento modular para otros medios. Deezer queda descartado para el índice local bajo sus condiciones estándar actuales; el motivo está documentado en el plan.
+
 ```text
 frontend/src/       Pantallas, componentes y comunicación con la API
 backend/app/        Rutas, servicios, SQL, seguridad y almacenamiento
@@ -131,12 +143,17 @@ docs/               Guías de arquitectura, datos y crecimiento
 1. Lee [la arquitectura](docs/ARQUITECTURA.md) para saber dónde va cada archivo.
 2. Sigue el arranque por hitos (acuerdos → datos → cuentas → demo privada) en [el plan de arranque](docs/PLAN_ARRANQUE.md) y cierra las decisiones propuestas en [decisiones](docs/DECISIONES.md) antes de escribir migraciones.
 3. Diseña el DER con [la guía de datos](docs/MODELO_DATOS.md), [el DER inicial](docs/DER.md) y el SRS original.
-4. Escribe migraciones y luego cuentas, sesiones y permisos.
-5. Construye carga privada → biblioteca → reproducción y prueba con dos usuarios.
+4. Consulta [el manual](docs/MANUAL.md) para las funciones existentes.
+5. Completa la aceptación real de I2 y continúa por I3–I4 según [el estado de las integraciones](docs/INTEGRACIONES.md).
 6. Sigue [la guía de crecimiento](docs/ESCALABILIDAD.md) antes de publicar.
 
-Las carpetas vacías incluyen `.gitkeep` para conservarse al versionar. No hay
-pruebas de negocio implementadas todavía; usa los escenarios del plan original.
+Las pruebas existentes y sus resultados se documentan en [verificación](docs/VERIFICACION.md).
+La nueva suite se ejecuta desde backend con
+`.\.venv\Scripts\python.exe -m scripts.verify_integrations` (usa una base temporal).
+OAuth y Picker se verifican con
+`.\.venv\Scripts\python.exe -m scripts.verify_google_drive` (MySQL temporal y Google simulado).
+Los tests de lógica se ejecutan con
+`.\.venv\Scripts\python.exe -m unittest discover -s ../tests/unit -p test_*.py`.
 Conviene mantener entornos virtuales, dependencias y audio fuera de sincronización
 con OneDrive si aparecen bloqueos o sincronización lenta.
 

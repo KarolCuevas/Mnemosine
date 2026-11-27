@@ -17,6 +17,7 @@ EXPECTED_TABLES = [
     "ARTIST",
     "ALBUM",
     "TRACK",
+    "TRACK_METADATA",
     "TRACK_ARTIST",
     "ALBUM_ARTIST",
     "TRACK_LOCATION",

@@ -1,6 +1,7 @@
 """Biblioteca privada, búsqueda y resolución de copias (Fase 3)."""
 
 from app.repositories import db
+from app.services.metadata import attach_cover_urls
 
 
 def list_shared_with_me(*, user_id: int) -> list[dict]:
@@ -24,7 +25,9 @@ def list_shared_with_me(*, user_id: int) -> list[dict]:
             "ORDER BY s.granted_at DESC",
             (user_id,),
         )
-        return list(cursor.fetchall())
+        items = list(cursor.fetchall())
+    attach_cover_urls(items)
+    return items
 
 
 def list_library(*, owner_id: int, q: str | None, page: int, page_size: int) -> dict:
@@ -74,6 +77,7 @@ def list_library(*, owner_id: int, q: str | None, page: int, page_size: int) -> 
         for item in items:
             item["available"] = item["availability"] == "AVAILABLE"
 
+    attach_cover_urls(items)
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
@@ -109,4 +113,11 @@ def get_track_detail(*, track_id: int, user_id: int) -> dict | None:
         # Sin copia propia y sin acceso por share ni PUBLIC: 404 uniforme.
         return None
     track["access"] = access
+    with db.read_only() as cursor:
+        cursor.execute("SELECT album_artist, genre, release_year, cover_jpeg IS NOT NULL AS has_cover "
+                       "FROM TRACK_METADATA WHERE track_id = %s", (track_id,))
+        metadata = cursor.fetchone()
+    if metadata:
+        track.update({key: metadata[key] for key in ("album_artist", "genre", "release_year")})
+    track["cover_url"] = f"/api/tracks/{track_id}/cover" if metadata and metadata["has_cover"] else None
     return track

@@ -1,8 +1,8 @@
 """Lectura técnica del audio, compartida entre carga y escaneo (D13).
 
 La lectura técnica (contenedor/códec/duración/tipo) se distingue de los
-metadatos de catálogo (formulario manual en la carga; etiquetas cuando
-existan en el escaneo).
+metadatos de catálogo. La carga importa etiquetas y portada mediante
+services.metadata y permite correcciones manuales; el escaneo lee etiquetas.
 """
 
 from pathlib import Path
@@ -41,7 +41,10 @@ def probe_audio_file(path: Path, filename_hint: str | None = None) -> tuple[str,
     if guessed_mime and guessed_mime not in _MIME_BY_EXT[ext]:
         raise AudioProbeError(f"el contenido no coincide con la extensión {ext} (detectado: {guessed_mime})")
 
-    audio = mutagen.File(str(path))
+    try:
+        audio = mutagen.File(str(path))
+    except (mutagen.MutagenError, ValueError, EOFError) as error:
+        raise AudioProbeError("no se reconoce como un audio válido (archivo dañado o incompleto)") from error
     if audio is None or not getattr(audio, "info", None) or not getattr(audio.info, "length", 0):
         raise AudioProbeError("no se reconoce como un audio válido (contenedor/códec no legible)")
     duration = int(audio.info.length)

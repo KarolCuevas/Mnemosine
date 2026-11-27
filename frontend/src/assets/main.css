@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./interface.css";
 
 /* Barra de progreso de subida: <progress> nativo, estilizado por completo
    según la guía modern-web-guidance (sin grouping de pseudo-elements). */
@@ -9,7 +10,7 @@ progress.progress-teal {
   overflow: clip;
   background: var(--color-slate-800, #1e293b);
   box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.2);
-  accent-color: #2dd4bf; /* mejora progresiva donde aplique */
+  accent-color: var(--color-teal-400);
 }
 
 progress.progress-teal::-webkit-progress-bar {
@@ -17,13 +18,13 @@ progress.progress-teal::-webkit-progress-bar {
 }
 
 progress.progress-teal::-webkit-progress-value {
-  background: #14b8a6;
+  background: var(--color-teal-500);
   border-radius: 1e5px;
   transition: inline-size 0.3s;
 }
 
 progress.progress-teal::-moz-progress-bar {
-  background: #14b8a6;
+  background: var(--color-teal-500);
   border-radius: 1e5px;
   transition: inline-size 0.3s;
 }

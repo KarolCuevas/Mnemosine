@@ -205,3 +205,9 @@ El MVP se considera terminado cuando RF-01 a RF-21 tienen evidencia, no quedan f
 Tras aceptar el MVP, implementar referencias externas de manera independiente: metadatos y enlaces oficiales, publicaciones de referencias, coincidencias sugeridas por ISRC/metadatos y confirmación de casos ambiguos. Validar disponibilidad y condiciones de cada proveedor al iniciar esa fase. Nunca incorporar extracción de audio como parte de estas integraciones.
 
 Las fuentes remotas adicionales y preferencias personales serán extensiones separadas. Su indisponibilidad no debe afectar la carga, búsqueda y reproducción de la biblioteca central.
+
+### Ampliación acordada el 24 de noviembre de 2026
+
+El [plan de integraciones](docs/PLAN_INTEGRACIONES.md) concreta la siguiente etapa: servicios musicales para consultar listados y metadatos; Google Drive por usuario para subir, vincular y recuperar archivos; copias entre Drive y el servidor; y adaptadores para otros medios. Esta solicitud incorpora escritura en Drive al alcance posterior al MVP. Las coincidencias automáticas y la reproducción o descarga desde servicios musicales no forman parte de esta entrega. Cada usuario conectará su propia cuenta de Drive, según la decisión confirmada.
+
+Actualización del 25 de noviembre: MusicBrainz pasa a ser el catálogo principal para búsqueda e indexación progresiva de nombres y metadatos básicos. Deezer se descarta para ese índice bajo sus condiciones estándar actuales, según la evaluación enlazada en el plan de integraciones. El almacenamiento se mantiene modular con contratos, capacidades y registro de adaptadores: servidor y Drive personal primero, otras fuentes incorporables después sin rehacer biblioteca o permisos.

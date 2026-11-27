@@ -21,7 +21,7 @@ de carga y cuota, sesión, etc.).
 | D10 | Nombres en UI vs SRS | Identificadores SQL en inglés (TRACK, TRACK_LOCATION…); UI y docs en español | H1 |
 | D11 | e2e | **Playwright** (Chromium primero; Firefox/WebKit según presupuesto) | H3 |
 | D12 | Estado de sesión frontend | **Pinia** (store `auth`); añadir a dependencias en H2 | H2 |
-| D13 | Metadatos en carga | El formulario manual sirve para título, artista, álbum y pista. Se **distingue de la lectura técnica del audio**: para validar formato real y obtener duración se usará **mutagen** (en H3); la extensión y el MIME declarado nunca bastan por sí solos | H3 |
+| D13 | Metadatos en carga | **Ampliada por petición del usuario el 27/11/2026**: importar etiquetas y portada incrustadas en MP3/M4A/FLAC/OGG/WAV, con correcciones manuales opcionales que tienen prioridad. Mutagen lee título, artistas, álbum, artista del álbum, pista, disco, año y género; Pillow normaliza la portada. El audio original no se modifica. Se mantiene separada la validación técnica de formato y duración; extensión y MIME declarado nunca bastan | H3 + mejora de carga |
 | D14 | Entorno de desarrollo | **Docker Desktop** + `compose.yaml` (MySQL 8.4, puerto 3307); API 8000; Vite 5173 | Fase 0/1 |
 
 ## 2. Matriz de acceso (A = propietario, B = autenticado, Admin = rol ADMIN)

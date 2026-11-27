@@ -10,7 +10,8 @@ export const usePlayerStore = defineStore('player', {
     currentTime: 0,
     duration: 0,
     volume: 0.8,
-    audio: null
+    audio: null,
+    error: ''
   }),
   actions: {
     ensureAudio() {
@@ -23,7 +24,10 @@ export const usePlayerStore = defineStore('player', {
       audio.addEventListener('ended', () => { this.next() })
       audio.addEventListener('timeupdate', () => { this.currentTime = audio.currentTime })
       audio.addEventListener('loadedmetadata', () => { this.duration = audio.duration || 0 })
-      audio.addEventListener('error', () => { this.playing = false })
+      audio.addEventListener('error', () => {
+        this.playing = false
+        if (this.current) this.error = 'No se pudo reproducir. Vuelve a intentarlo.'
+      })
       this.audio = audio
       return audio
     },
@@ -33,16 +37,18 @@ export const usePlayerStore = defineStore('player', {
       const audio = this.ensureAudio()
       this.index = position
       this.current = item
+      this.error = ''
       this.currentTime = 0
       this.duration = item.duration_seconds || 0
       audio.src = api.audioUrl(item.track_id)
       audio.currentTime = 0
-      audio.play().catch(() => { this.playing = false })
+      this.startPlayback(audio)
     },
     setQueue(items, startIndex = 0) {
+      const selected = items[startIndex]
       this.queue = items.filter((item) => item.available !== false)
       if (this.queue.length === 0) return
-      this.playAt(Math.min(startIndex, this.queue.length - 1))
+      this.playAt(Math.max(0, this.queue.indexOf(selected)))
     },
     playSingle(item) {
       this.setQueue([item], 0)
@@ -53,7 +59,8 @@ export const usePlayerStore = defineStore('player', {
       if (this.playing) {
         audio.pause()
       } else {
-        audio.play().catch(() => { this.playing = false })
+        this.error = ''
+        this.startPlayback(audio)
       }
     },
     next() {
@@ -85,6 +92,27 @@ export const usePlayerStore = defineStore('player', {
       this.volume = value
       const audio = this.ensureAudio()
       audio.volume = value
+    },
+    startPlayback(audio) {
+      audio.play().catch((error) => {
+        if (error.name === 'AbortError') return
+        this.playing = false
+        this.error = 'No se pudo reproducir. Pulsa reproducir para intentarlo de nuevo.'
+      })
+    },
+    reset() {
+      if (this.audio) {
+        this.audio.pause()
+        this.audio.removeAttribute('src')
+        this.audio.load()
+      }
+      this.queue = []
+      this.index = -1
+      this.current = null
+      this.playing = false
+      this.currentTime = 0
+      this.duration = 0
+      this.error = ''
     }
   }
 })

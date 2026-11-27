@@ -1,24 +1,15 @@
 <template>
-  <main class="min-h-screen bg-slate-950 pb-24 text-slate-100">
-    <header class="border-b border-slate-800">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
-        <span class="text-lg font-semibold tracking-wide text-teal-300">Mnemosine</span>
-        <nav aria-label="Principal" class="flex items-center gap-3 text-sm">
-          <RouterLink :to="{ name: 'biblioteca' }" class="rounded-lg px-3 py-1.5 text-slate-300 transition hover:text-teal-300">Mi biblioteca</RouterLink>
-          <span class="rounded-lg border border-teal-900 px-3 py-1.5 text-teal-300">Administración</span>
-        </nav>
-      </div>
-    </header>
+  <div class="page admin-page">
 
-    <section class="mx-auto max-w-5xl px-6 py-6">
+    <section class="page-section">
       <p class="text-xs font-medium uppercase tracking-[0.3em] text-teal-300">Administración</p>
       <h1 class="mt-1 text-3xl font-semibold">Plataforma</h1>
 
-      <div role="tablist" aria-label="Secciones de administración" class="mt-5 flex flex-wrap gap-2 border-b border-slate-800 pb-3">
-        <button v-for="tab in tabs" :key="tab.id" type="button" role="tab"
+      <div role="group" aria-label="Secciones de administración" class="mt-5 flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+        <button v-for="tab in tabs" :key="tab.id" type="button"
           class="rounded-lg px-3 py-1.5 text-sm transition"
           :class="activeTab === tab.id ? 'bg-teal-500 text-slate-950 font-medium' : 'text-slate-300 hover:text-teal-300'"
-          :aria-selected="activeTab === tab.id"
+          :aria-pressed="activeTab === tab.id"
           @click="activeTab = tab.id">
           {{ tab.label }}
         </button>
@@ -28,7 +19,7 @@
       <div v-if="activeTab === 'cuentas'" class="mt-4">
         <p v-if="error" role="alert" class="mb-3 rounded-lg border border-red-900 bg-red-950/60 px-3 py-2 text-sm text-red-300">{{ error }}</p>
         <p v-if="loading" class="text-slate-400">Cargando cuentas…</p>
-        <table v-else class="w-full divide-y divide-slate-800 rounded-xl border border-slate-800 text-sm">
+        <div v-else class="table-scroll" tabindex="0" role="region" aria-label="Cuentas de usuario"><table class="w-full divide-y divide-slate-800 rounded-xl border border-slate-800 text-sm">
           <thead class="text-left text-xs uppercase text-slate-500">
             <tr><th class="px-3 py-2">Usuario</th><th class="px-3 py-2">Correo</th><th class="px-3 py-2">Rol</th><th class="px-3 py-2">Estado</th><th class="px-3 py-2">Acciones</th></tr>
           </thead>
@@ -46,19 +37,19 @@
               </td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       <!-- Fuentes y escaneos -->
       <div v-else-if="activeTab === 'fuentes'" class="mt-4 space-y-4">
         <form class="flex flex-wrap items-end gap-2 rounded-xl border border-slate-800 p-4" @submit.prevent="createSource">
-          <div>
+          <div class="min-w-0 w-full sm:w-auto">
             <label class="mb-1 block text-xs text-slate-400" for="src-name">Nombre</label>
-            <input id="src-name" v-model="sourceForm.name" required maxlength="255" placeholder="Biblioteca" class="w-48 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none focus:border-teal-400" />
+            <input id="src-name" v-model="sourceForm.name" required maxlength="255" placeholder="Biblioteca" class="w-full sm:w-48 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none focus:border-teal-400" />
           </div>
-          <div>
+          <div class="min-w-0 w-full sm:w-auto">
             <label class="mb-1 block text-xs text-slate-400" for="src-path">Carpeta (relativa a SCAN_ROOT)</label>
-            <input id="src-path" v-model="sourceForm.base_relative_path" required maxlength="512" placeholder="biblioteca" class="w-64 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none focus:border-teal-400" />
+            <input id="src-path" v-model="sourceForm.base_relative_path" required maxlength="512" placeholder="biblioteca" class="w-full sm:w-64 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none focus:border-teal-400" />
           </div>
           <button type="submit" class="rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-teal-400 disabled:opacity-60" :disabled="sourceCreating">Registrar fuente</button>
         </form>
@@ -113,7 +104,7 @@
           </select>
           <span class="text-xs text-slate-500">{{ operations.total }} total</span>
         </div>
-        <table class="mt-3 w-full divide-y divide-slate-800 rounded-xl border border-slate-800 text-xs">
+        <div class="table-scroll mt-3" tabindex="0" role="region" aria-label="Operaciones"><table class="mt-3 w-full divide-y divide-slate-800 rounded-xl border border-slate-800 text-xs">
           <thead class="text-left uppercase text-slate-500"><tr><th class="px-3 py-2">#</th><th class="px-3 py-2">Tipo</th><th class="px-3 py-2">Actor</th><th class="px-3 py-2">Resultado</th><th class="px-3 py-2">Detalle</th><th class="px-3 py-2">Fecha</th></tr></thead>
           <tbody class="divide-y divide-slate-800">
             <tr v-for="op in operations.items" :key="op.operation_id">
@@ -125,7 +116,7 @@
               <td class="px-3 py-2 text-slate-500">{{ formatDate(op.created_at) }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
         <div class="mt-3 flex items-center justify-between">
           <button type="button" class="rounded-lg border border-slate-700 px-3 py-1.5 text-xs disabled:opacity-40" :disabled="operations.page <= 1" @click="loadOperations(operations.page - 1)">Anterior</button>
           <span class="text-xs text-slate-500">Página {{ operations.page }}</span>
@@ -136,7 +127,7 @@
       <!-- Auditoría -->
       <div v-else-if="activeTab === 'auditoria'" class="mt-4">
         <p class="text-xs text-slate-500">{{ audit.total }} eventos registrados</p>
-        <table class="mt-2 w-full divide-y divide-slate-800 rounded-xl border border-slate-800 text-xs">
+        <div class="table-scroll mt-2" tabindex="0" role="region" aria-label="Auditoría"><table class="mt-2 w-full divide-y divide-slate-800 rounded-xl border border-slate-800 text-xs">
           <thead class="text-left uppercase text-slate-500"><tr><th class="px-3 py-2">#</th><th class="px-3 py-2">Acción</th><th class="px-3 py-2">Actor</th><th class="px-3 py-2">Destino</th><th class="px-3 py-2">Detalle</th><th class="px-3 py-2">Fecha</th></tr></thead>
           <tbody class="divide-y divide-slate-800">
             <tr v-for="entry in audit.items" :key="entry.audit_id">
@@ -148,7 +139,7 @@
               <td class="px-3 py-2 text-slate-500">{{ formatDate(entry.created_at) }}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
         <div class="mt-3 flex items-center justify-between">
           <button type="button" class="rounded-lg border border-slate-700 px-3 py-1.5 text-xs disabled:opacity-40" :disabled="audit.page <= 1" @click="loadAudit(audit.page - 1)">Anterior</button>
           <span class="text-xs text-slate-500">Página {{ audit.page }}</span>
@@ -156,7 +147,7 @@
         </div>
       </div>
     </section>
-  </main>
+  </div>
 </template>
 
 <script setup>

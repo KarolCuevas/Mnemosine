@@ -10,6 +10,7 @@ class DiscoveryAccount(BaseModel):
 
 
 class DiscoveryItem(BaseModel):
+    cover_url: str | None = None
     location_id: int
     track_id: int
     title: str
@@ -30,6 +31,7 @@ class DiscoveryCatalog(BaseModel):
 
 
 class SharedItem(BaseModel):
+    cover_url: str | None = None
     location_id: int
     track_id: int
     title: str

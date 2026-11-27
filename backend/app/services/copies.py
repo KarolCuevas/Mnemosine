@@ -15,7 +15,8 @@ disco se marca MISSING (write-through) y se sigue con la siguiente candidata.
 
 from app.repositories import db
 from app.services.permissions import LocationFacts, can
-from app.services.storage import get_storage
+from app.services.storage import get_storage_for_source
+from app.storage.contract import ObjectState, StorageError
 
 ACTION_VIEW = "view"
 ACTION_STREAM = "stream"
@@ -25,10 +26,11 @@ ACTION_DOWNLOAD = "download"
 def _candidates(*, track_id: int, user_id: int) -> list[dict]:
     with db.read_only() as cursor:
         cursor.execute(
-            "SELECT l.location_id, l.track_id, l.owner_user_id, l.relative_path, l.size_bytes, "
+            "SELECT l.location_id, l.track_id, l.owner_user_id, l.source_id, l.relative_path, l.size_bytes, "
             "       l.mime_type, l.visibility, l.public_download_allowed, l.availability, "
             "       s.can_stream AS share_stream, s.can_download AS share_download "
             "FROM TRACK_LOCATION l "
+            "JOIN USER_ACCOUNT owner ON owner.user_id = l.owner_user_id AND owner.is_active = 1 "
             "LEFT JOIN TRACK_SHARE s "
             "       ON s.location_id = l.location_id AND s.recipient_user_id = %s AND s.revoked_at IS NULL "
             "WHERE l.track_id = %s "
@@ -58,6 +60,12 @@ def _mark_missing(location_id: int) -> None:
         )
 
 
+def can_view_track(*, track_id: int, user_id: int) -> bool:
+    """Autoriza los metadatos/portada sin exigir que el audio esté conectado."""
+    return any(can(actor_user_id=user_id, action=ACTION_VIEW, facts=_facts(row))
+               for row in _candidates(track_id=track_id, user_id=user_id))
+
+
 def resolve_for_action(*, track_id: int, user_id: int, action: str) -> tuple[dict | None, str]:
     """Devuelve (copia_o_None, estado).
 
@@ -83,11 +91,21 @@ def resolve_for_action(*, track_id: int, user_id: int, action: str) -> tuple[dic
             return (1, row["location_id"])
         return (2, row["location_id"])
 
-    storage = get_storage()
     any_unavailable = False
     for row, _ in sorted(allowed, key=rank):
-        if row["availability"] != "AVAILABLE" or not storage.exists(row["relative_path"]):
-            _mark_missing(row["location_id"])
+        if row["availability"] != "AVAILABLE":
+            any_unavailable = True
+            continue
+        try:
+            storage = get_storage_for_source(row["source_id"])
+            storage.require("read")
+            info = storage.stat(row["relative_path"])
+        except StorageError:
+            any_unavailable = True
+            continue
+        if info.state != ObjectState.FOUND:
+            if info.state == ObjectState.NOT_FOUND:
+                _mark_missing(row["location_id"])
             any_unavailable = True
             continue
         return row, "ok"

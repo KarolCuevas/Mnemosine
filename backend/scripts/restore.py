@@ -6,7 +6,7 @@ Por defecto restaura en una base NUEVA (`mnemosine_restore`) y en un directorio
 temporal, SIN tocar la base `mnemosine` ni storage/ reales. Sirve para validar
 respaldos (prueba del SRS §10). Para restaurar de verdad sobre `mnemosine`:
 
-    python -m scripts.restore <respaldo> --db-name mnemosine --storage-root <repo>/storage --yes
+    python -m scripts.restore <respaldo> --db-name mnemosine --storage-dir <repo>/storage --yes
 
 Comprueba el sha256 del dump y los conteos de filas de cada tabla contra el
 manifiesto; imprime «RESTAURACIÓN VERIFICADA» o avisa de discrepancias.
@@ -15,6 +15,7 @@ manifiesto; imprime «RESTAURACIÓN VERIFICADA» o avisa de discrepancias.
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,23 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def quarantine_sql(database: str, tables) -> str:
+    """No reactivar grants ni trabajos a partir de un respaldo. No llama a Google."""
+    if not re.fullmatch(r"[A-Za-z0-9_]+", database):
+        raise ValueError("Nombre de base inválido")
+    statements = []
+    if "INTEGRATION_CONNECTION" in tables:
+        statements.append(f"UPDATE {database}.INTEGRATION_CONNECTION SET credentials_ciphertext=NULL,expires_at=NULL,"
+                          "status=CASE WHEN status='DISCONNECTED' THEN 'DISCONNECTED' ELSE 'REAUTH_REQUIRED' END,"
+                          "generation=generation+1")
+    if "OAUTH_AUTHORIZATION" in tables:
+        statements.append(f"DELETE FROM {database}.OAUTH_AUTHORIZATION")
+    if "TRANSFER_JOB" in tables:
+        statements.append(f"UPDATE {database}.TRANSFER_JOB SET status='CANCELLED',reserved_bytes=0,lease_token=NULL,lease_expires_at=NULL "
+                          "WHERE status NOT IN ('COMPLETED','FAILED','CANCELLED')")
+    return "; ".join(statements)
 
 
 def docker_compose(*args: str) -> str:
@@ -70,6 +88,9 @@ def main() -> int:
     print(f"Dump verificado: sha256 {sql_sha[:16]}…")
 
     target_db = args.db_name
+    if not re.fullmatch(r"[A-Za-z0-9_]+", target_db) or any(not re.fullmatch(r"[A-Za-z0-9_]+", table) for table in manifest["tables"]):
+        print("Nombre de base o tabla inválido.", file=sys.stderr)
+        return 1
     if target_db == "mnemosine" and not args.yes:
         print("Restaurar sobre 'mnemosine' destruirá la base actual. Repite con --yes.", file=sys.stderr)
         return 1
@@ -104,6 +125,12 @@ def main() -> int:
         if actual != expected:
             mismatches.append(table)
         print(f"  {status}  {table}: {actual} (manifiesto {expected})")
+
+    # Comparar el respaldo antes de invalidar intencionalmente estados transitorios.
+    quarantine = quarantine_sql(target_db, manifest["tables"])
+    if quarantine:
+        container_exec(container, quarantine)
+        print("  Conexiones requieren autorización nueva; trabajos pendientes cancelados.")
 
     storage_target = args.storage_dir
     if storage_target is None:

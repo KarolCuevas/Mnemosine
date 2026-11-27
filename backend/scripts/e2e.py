@@ -9,8 +9,10 @@ Uso desde backend: python -m scripts.e2e
 """
 
 import os
+import socket
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -18,7 +20,6 @@ ROOT = Path(__file__).resolve().parents[2]
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
 os.environ["DB_NAME"] = "mnemosine_e2e"
-os.environ["STORAGE_ROOT"] = str(ROOT / "storage")
 
 E2E_IDENTITY = "e2e_admin"
 E2E_PASSWORD = "e2e-demo-password-2026!"
@@ -42,7 +43,34 @@ def wait_http(url: str, timeout: float, expect_ok: bool = True) -> bool:
     return False
 
 
-def main() -> int:
+def stop_process(proc):
+    if proc is None:
+        return
+    # The Windows venv launcher can spawn a child Python process. Stop only this
+    # test's process tree before removing its temporary audio/database.
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], capture_output=True)
+    else:
+        proc.terminate()
+    proc.wait(timeout=10)
+
+
+def run(temporary: Path) -> int:
+    os.environ["STORAGE_ROOT"] = str(temporary / "storage")
+    from scripts.media_test_fixtures import make_tagged_wav
+    fixture = temporary / "nombre-distinto.wav"
+    make_tagged_wav(fixture)
+    try:
+        return run_servers(fixture)
+    finally:
+        docker(
+            "compose", "exec", "-T", "db", "sh", "-c",
+            'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" '
+            '-e "DROP DATABASE IF EXISTS mnemosine_e2e"'
+        )
+
+
+def run_servers(fixture: Path) -> int:
     print("== Preparando base mnemosine_e2e ==")
     result = docker(
         "compose", "exec", "-T", "db", "sh", "-c",
@@ -69,22 +97,21 @@ def main() -> int:
                 (E2E_IDENTITY, "e2e-admin@example.test", passwords.hash_password(E2E_PASSWORD)),
             )
 
-    venv_python = BACKEND / ".venv" / "Scripts" / "python.exe"
     api_env = {**os.environ, "DB_NAME": "mnemosine_e2e"}
     print("== Levantando API en :8010 ==")
     api = subprocess.Popen(
-        [str(venv_python), "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8010"],
+        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8010"],
         cwd=BACKEND, env=api_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
 
-    vite = subprocess.Popen(
-        ["npx.cmd", "vite", "--host", "127.0.0.1", "--port", "5174", "--strictPort"],
-        cwd=FRONTEND, env={**os.environ, "VITE_API_TARGET": "http://127.0.0.1:8010"},
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-
+    vite = None
     exit_code = 1
     try:
+        vite = subprocess.Popen(
+            ["node", str(FRONTEND / "node_modules" / "vite" / "bin" / "vite.js"), "--host", "127.0.0.1", "--port", "5174", "--strictPort"],
+            cwd=FRONTEND, env={**os.environ, "VITE_API_TARGET": "http://127.0.0.1:8010"},
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
         if not wait_http("http://127.0.0.1:8010/api/health", 30):
             print("La API no arrancó en :8010", file=sys.stderr)
             return 1
@@ -95,21 +122,30 @@ def main() -> int:
         print("== Ejecutando Playwright ==")
         result = subprocess.run(["npx.cmd", "playwright", "test"], cwd=FRONTEND,
                                 env={**os.environ, "PLAYWRIGHT_BASE_URL": "http://127.0.0.1:5174",
-                                     "E2E_IDENTITY": E2E_IDENTITY, "E2E_PASSWORD": E2E_PASSWORD})
+                                     "E2E_IDENTITY": E2E_IDENTITY, "E2E_PASSWORD": E2E_PASSWORD,
+                                     "E2E_MEDIA_FIXTURE": str(fixture)})
         exit_code = result.returncode
     finally:
         print("== Limpiando ==")
         for proc in (vite, api):
             try:
-                proc.terminate()
+                stop_process(proc)
             except Exception:
                 pass
-        docker(
-            "compose", "exec", "-T", "db", "sh", "-c",
-            'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" '
-            '-e "DROP DATABASE IF EXISTS mnemosine_e2e"'
-        )
     return exit_code
+
+
+def main() -> int:
+    # Never silently run the suite against a leftover server from another run.
+    for port in (8010, 5174):
+        with socket.socket() as probe:
+            try:
+                probe.bind(("127.0.0.1", port))
+            except OSError:
+                print(f"El puerto de pruebas {port} está ocupado; libera ese entorno antes de continuar.", file=sys.stderr)
+                return 1
+    with tempfile.TemporaryDirectory(prefix="mnemosine_e2e_") as temporary:
+        return run(Path(temporary))
 
 
 if __name__ == "__main__":

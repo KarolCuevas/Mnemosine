@@ -9,8 +9,12 @@ import ColeccionView from '../views/ColeccionView.vue'
 import ListasView from '../views/ListasView.vue'
 import ListaDetalleView from '../views/ListaDetalleView.vue'
 import AdminView from '../views/AdminView.vue'
+import ReferenciasView from '../views/ReferenciasView.vue'
+import ConexionesView from '../views/ConexionesView.vue'
 
 const routes = [
+  { path: '/conexiones', name: 'conexiones', component: ConexionesView, meta: { requiresAuth: true, title: 'Mi Google Drive' } },
+  { path: '/referencias', name: 'referencias', component: ReferenciasView, meta: { requiresAuth: true, title: 'Referencias musicales' } },
   { path: '/acceso', name: 'acceso', component: AccesoView, meta: { title: 'Acceso' } },
   { path: '/biblioteca', name: 'biblioteca', component: BibliotecaView, meta: { requiresAuth: true, title: 'Mi biblioteca' } },
   { path: '/biblioteca/cargar', name: 'cargar', component: CargarView, meta: { requiresAuth: true, title: 'Cargar música' } },

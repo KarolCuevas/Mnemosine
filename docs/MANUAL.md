@@ -26,7 +26,7 @@ npm run dev
 
 Abre <http://127.0.0.1:5173> y comprueba `http://127.0.0.1:8000/api/health`.
 
-Compueba MySQL: `python -m scripts.check_db` (debe decir 20 tablas).
+Comprueba MySQL: `python -m scripts.check_db` (no debe indicar tablas faltantes).
 
 ## 2. Cuentas
 
@@ -48,12 +48,16 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/admin/invitations' -Method Pos
 
 ## 3. Recorrido de uso
 
-1. **Cargar**: «Cargar» → elige archivo (MP3/M4A/FLAC/OGG/WAV, ≤ 50 MB; cuota
-   5 GB) → título/artista → «Guardar como privada». La copia queda visible
-   para ti únicamente.
+1. **Subir música**: elige archivo (MP3/M4A/FLAC/OGG/WAV, ≤ 50 MB; cuota
+   5 GB) → «Guardar como privada». Importamos automáticamente título, artistas,
+   álbum, artista del álbum, pista, disco, año, género y portada cuando estén
+   incluidos en el audio. Los campos del formulario son opcionales: lo que
+   escribas tiene prioridad sobre las etiquetas del archivo. Sin título se usa
+   el nombre del archivo; sin artista, «Artista desconocido». La copia queda
+   visible para ti únicamente y conserva sus bytes originales.
 2. **Biblioteca**: búsqueda por título/artista/álbum, paginación, reproducir y
    descargar lo permitido. El reproductor inferior persiste entre pantallas.
-3. **Detalle**: SHA-256, disponibilidad y copias propias. Desde ahí: reproducir,
+3. **Detalle**: portada, etiquetas importadas, SHA-256, disponibilidad y copias propias. Desde ahí: reproducir,
    descargar, **permisos** (publicar, descarga pública, compartir) y añadir a
    listas.
 4. **Compartir**: «Permisos» → declara autorización → comparte con un usuario
@@ -101,6 +105,7 @@ prueba de restauración mensual.
 | `MISSING` en detalle | El archivo falta en disco o la fuente desconectada. Restaura el archivo y reescanea. |
 | Docker no arranca | El motor WSL de Docker Desktop requiere y está presente; revisa `docker info`. |
 | `--reload` no detecta cambios | OneDrive: arranca uvicorn **sin** `--reload`. |
+| No aparece la portada de una nueva subida | Debe estar incrustada en el audio: una imagen en la misma carpeta no se importa. Se admiten imágenes JPEG, PNG o WebP de hasta 8 MB y 16 millones de píxeles; una portada dañada se omite con aviso, conservando el audio y las etiquetas. |
 
 ## 7. Limitaciones del MVP (por diseño)
 
@@ -109,3 +114,5 @@ prueba de restauración mensual.
 - Borrar una copia/lista nunca borra el archivo ni otras referencias.
 - El rol ADMIN no concede ni retira permisos de contenido.
 - No hay conversión/transcodificación ni extracción de audio externo (RF-22+).
+- Las etiquetas y portadas automáticas se aplican a nuevas subidas. Los archivos
+  anteriores no se reprocesan y no se buscan imágenes en servicios externos.

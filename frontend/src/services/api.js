@@ -34,7 +34,9 @@ async function request(path, { method = 'GET', body } = {}) {
     data = null
   }
   if (!response.ok) {
-    throw new ApiError(response.status, data?.detail ?? 'No se pudo completar la solicitud')
+    const message = typeof data?.detail === 'string' ? data.detail : 'Revisa los datos e inténtalo de nuevo'
+    const retry = response.headers.get('Retry-After')
+    throw new ApiError(response.status, retry ? `${message} Puedes reintentar en ${retry} segundos.` : message)
   }
   return data
 }
@@ -72,6 +74,20 @@ export function uploadWithProgress(formData, { onProgress } = {}) {
 }
 
 export const api = {
+  driveStatus: () => request('/api/integrations/google_drive/status'),
+  driveAuthorize: () => request('/api/integrations/google_drive/authorize', { method: 'POST' }),
+  drivePicker: (id) => request(`/api/integrations/google_drive/connections/${id}/picker`, { method: 'POST' }),
+  driveSelect: (id, fileIds) => request(`/api/integrations/google_drive/connections/${id}/files`, { method: 'POST', body: { file_ids: fileIds } }),
+  driveFiles: (id, page = 1) => request(`/api/integrations/google_drive/connections/${id}/files?page=${page}`),
+  driveRemove: (id, selectionId) => request(`/api/integrations/google_drive/connections/${id}/files/${selectionId}`, { method: 'DELETE' }),
+  driveDisconnect: (id) => request(`/api/integrations/google_drive/connections/${id}/disconnect`, { method: 'POST' }),
+  integrationProviders: () => request('/api/integrations/providers'),
+  catalogSearch: ({ title = '', artist = '', page = 1 } = {}) => request(`/api/catalog/recordings?${new URLSearchParams({ title, artist, page })}`),
+  externalSearch: ({ title, artist = '', cursor = '' }) => request(`/api/external/musicbrainz/search?${new URLSearchParams({ title, artist, ...(cursor ? { cursor } : {}) })}`),
+  externalReferences: (page = 1) => request(`/api/external/references?page=${page}`),
+  saveReference: (item) => request('/api/external/references', { method: 'POST', body: { provider: item.provider, provider_id: item.provider_id } }),
+  deleteReference: (id) => request(`/api/external/references/${id}`, { method: 'DELETE' }),
+  refreshReference: (item) => request(`/api/external/${encodeURIComponent(item.provider)}/recordings/${encodeURIComponent(item.provider_id)}?refresh=true`),
   health: () => request('/api/health'),
   me: () => request('/api/auth/me'),
   login: (identity, password) => request('/api/auth/login', { method: 'POST', body: { identity, password } }),

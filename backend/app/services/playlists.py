@@ -10,6 +10,7 @@ dentro de una transacción.
 
 from app.repositories import db
 from app.services.errors import ServiceError
+from app.services.metadata import attach_cover_urls
 
 
 class PlaylistNotFoundError(ServiceError):
@@ -80,7 +81,8 @@ def get_playlist_detail(*, owner_id: int, playlist_id: int) -> dict:
             (playlist_id,),
         )
         playlist["tracks"] = list(cursor.fetchall())
-        return playlist
+    attach_cover_urls(playlist["tracks"])
+    return playlist
 
 
 def update_playlist(*, owner_id: int, playlist_id: int, name: str | None, description: str | None) -> dict:

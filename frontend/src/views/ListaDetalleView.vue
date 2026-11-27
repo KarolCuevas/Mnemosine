@@ -1,13 +1,8 @@
 <template>
-  <main class="min-h-screen bg-slate-950 pb-24 text-slate-100">
-    <header class="border-b border-slate-800">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
-        <RouterLink :to="{ name: 'listas' }" class="text-sm text-slate-400 hover:text-teal-300">← Tus listas</RouterLink>
-        <span class="text-sm text-slate-500">{{ detail?.tracks?.length ?? 0 }} canciones</span>
-      </div>
-    </header>
+  <div class="page listadetalle-page">
 
-    <section class="mx-auto max-w-2xl px-6 py-6">
+    <section class="page-section">
+      <RouterLink to="/listas" class="text-link mb-6">← Tus listas</RouterLink>
       <p v-if="loading" class="text-slate-400">Cargando…</p>
       <p v-else-if="error" role="alert" class="rounded-lg border border-red-900 bg-red-950/60 px-4 py-3 text-red-300">{{ error }}</p>
 
@@ -29,15 +24,15 @@
           <button type="button" class="rounded-lg border border-red-900 px-3 py-2 text-sm text-red-300 transition hover:bg-red-950" @click="removePlaylist">Eliminar lista</button>
         </div>
 
-        <div class="mt-4 flex flex-wrap gap-2">
+        <div class="playlist-layout"><div class="min-w-0"><div class="mt-4 flex flex-wrap gap-2">
           <button type="button" class="rounded-lg bg-teal-500 px-4 py-2 font-medium text-slate-950 transition hover:bg-teal-400 disabled:opacity-50"
             :disabled="detail.tracks.length === 0" @click="playAll">Reproducir lista</button>
         </div>
 
         <ol v-if="detail.tracks.length" class="mt-4 divide-y divide-slate-800 rounded-xl border border-slate-800">
-          <li v-for="(track, index) in orderedTracks" :key="track.track_id" class="flex items-center gap-2 px-3 py-2">
-            <span class="w-6 text-right text-xs tabular-nums text-slate-600">{{ index + 1 }}</span>
-            <button type="button" class="rounded-full bg-slate-800 p-1.5 text-teal-300 transition hover:bg-teal-500 hover:text-slate-950"
+          <li v-for="(track, index) in orderedTracks" :key="track.track_id" class="playlist-track flex flex-wrap items-center gap-2 px-3 py-3">
+            <span class="hidden sm:block w-6 text-right text-xs tabular-nums text-slate-600">{{ index + 1 }}</span>
+            <button type="button" class="round-play"
               :aria-label="`Reproducir ${track.title}`" @click="playFrom(index)">
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
             </button>
@@ -45,7 +40,7 @@
               <RouterLink :to="{ name: 'detalle', params: { id: track.track_id } }" class="block truncate text-sm font-medium text-slate-100 hover:text-teal-300">{{ track.title }}</RouterLink>
               <span class="block truncate text-xs text-slate-500">{{ track.artists }}</span>
             </div>
-            <div class="flex items-center gap-1">
+            <div class="playlist-track-actions flex items-center gap-1">
               <button type="button" class="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-800 hover:text-teal-300 disabled:opacity-30" :disabled="index === 0" :aria-label="`Subir ${track.title}`" @click="move(index, -1)">
                 <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M12 5l7 7-1.4 1.4L12 7.8 6.4 13.4 5 12z"/></svg>
               </button>
@@ -60,8 +55,8 @@
         </ol>
         <p v-else class="mt-4 rounded-xl border border-dashed border-slate-800 px-4 py-6 text-center text-sm text-slate-500">Lista vacía. Añade canciones desde abajo o desde el detalle de una canción.</p>
 
-        <div class="mt-6">
-          <h2 class="text-sm font-medium text-slate-400">Añadir desde tu biblioteca</h2>
+        </div><div class="playlist-add form-panel">
+          <h2 class="text-lg font-medium text-slate-200">Añadir desde tu biblioteca</h2>
           <label class="sr-only" for="add-search">Buscar en tu biblioteca</label>
           <input id="add-search" v-model="addQuery" type="search" placeholder="Buscar por título, artista o álbum" autocomplete="off"
             class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 outline-none focus:border-teal-400" />
@@ -73,13 +68,13 @@
             </li>
           </ul>
         </div>
-      </template>
+      </div></template>
     </section>
-  </main>
+  </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../services/api'
 import { usePlayerStore } from '../stores/player'
@@ -198,4 +193,5 @@ onMounted(async () => {
   await load()
   await loadLibrary()
 })
+onUnmounted(() => clearTimeout(libraryTimer))
 </script>

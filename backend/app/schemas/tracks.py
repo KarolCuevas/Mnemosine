@@ -16,9 +16,17 @@ class UploadResponse(BaseModel):
     sha256: str
     mime_type: str
     visibility: str
+    album_artist: str | None = None
+    genre: str | None = None
+    track_number: int | None = None
+    disc_number: int | None = None
+    release_year: int | None = None
+    cover_url: str | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class LibraryItem(BaseModel):
+    cover_url: str | None = None
     location_id: int
     track_id: int
     title: str
@@ -57,6 +65,9 @@ class AccessOut(BaseModel):
 
 
 class TrackDetail(BaseModel):
+    cover_url: str | None = None
+    album_artist: str | None = None
+    genre: str | None = None
     track_id: int
     title: str
     artists: str
@@ -70,9 +81,11 @@ class TrackDetail(BaseModel):
 
 
 class UploadForm(BaseModel):
-    title: str = Field(min_length=1, max_length=512)
-    artist: str = Field(min_length=1, max_length=255)
+    title: str | None = Field(default=None, max_length=512)
+    artist: str | None = Field(default=None, max_length=255)
     album: str | None = Field(default=None, max_length=512)
     track_number: int | None = Field(default=None, ge=1, le=1000)
     disc_number: int | None = Field(default=None, ge=1, le=100)
-    release_year: int | None = Field(default=None, ge=1900, le=2100)
+    release_year: int | None = Field(default=None, ge=1000, le=9999)
+    album_artist: str | None = Field(default=None, max_length=255)
+    genre: str | None = Field(default=None, max_length=255)

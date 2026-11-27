@@ -13,7 +13,8 @@ from app.schemas.tracks import LibraryPage, TrackDetail, UploadResponse, AccessO
 from app.security.deps import CurrentUser, get_current_user, require_csrf
 from app.services import copies, delivery, library, uploads
 from app.services.delivery import RangeNotSatisfiable
-from app.services.storage import get_storage
+from app.services.storage import get_storage_for_source
+from app.storage.contract import SourceUnavailableError, UnsupportedOperationError
 from app.services.uploads import QuotaExceededError, UploadValidationError
 from app.repositories import db, operations
 from app.storage import FileTooLargeError, StorageError
@@ -22,14 +23,17 @@ router = APIRouter(tags=["Biblioteca y audio"])
 
 
 @router.post("/tracks/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
-async def upload_track(
+def upload_track(
     file: UploadFile = File(...),
-    title: str = Form(..., max_length=512),
-    artist: str = Form(..., max_length=255),
+    title: str | None = Form(None, max_length=512),
+    artist: str | None = Form(None, max_length=255),
     album: str | None = Form(None, max_length=512),
-    track_number: int | None = Form(None),
-    disc_number: int | None = Form(None),
-    release_year: int | None = Form(None),
+    track_number: int | None = Form(None, ge=1, le=1000),
+    disc_number: int | None = Form(None, ge=1, le=100),
+    release_year: int | None = Form(None, ge=1000, le=9999),
+    album_artist: str | None = Form(None, max_length=255),
+    genre: str | None = Form(None, max_length=255),
+    source_id: int = Form(uploads.CENTRAL_SOURCE_ID, gt=0),
     _csrf: None = Depends(require_csrf),
     current: CurrentUser = Depends(get_current_user),
 ) -> UploadResponse:
@@ -37,21 +41,20 @@ async def upload_track(
     if file.size is not None and file.size > settings.max_upload_bytes:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                             detail="el archivo supera el máximo de 50 MB")
-    content = await file.read(settings.max_upload_bytes + 1)
-    if len(content) > settings.max_upload_bytes:
-        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                            detail="el archivo supera el máximo de 50 MB")
     try:
         result = uploads.upload_track(
             user_id=current.user_id,
             original_filename=file.filename or "sin-nombre",
-            content=content,
+            content=iter(lambda: file.file.read(64 * 1024), b""),
+            source_id=source_id,
             title=title,
             artist=artist,
             album=album,
             track_number=track_number,
             disc_number=disc_number,
             release_year=release_year,
+            album_artist=album_artist,
+            genre=genre,
         )
     except FileTooLargeError:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -62,7 +65,11 @@ async def upload_track(
     except UploadValidationError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail=str(error))
-    except StorageError:
+    except SourceUnavailableError:
+        raise HTTPException(status_code=404, detail="Destino no disponible")
+    except UnsupportedOperationError:
+        raise HTTPException(status_code=422, detail="Este destino no admite cargas en esta versión")
+    except (StorageError, OSError):
         raise HTTPException(status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
                             detail="no se pudo guardar el archivo; inténtalo de nuevo")
     return UploadResponse(**result)
@@ -87,6 +94,23 @@ def track_detail(track_id: int, current: CurrentUser = Depends(get_current_user)
     return TrackDetail(**detail)
 
 
+@router.get("/tracks/{track_id}/cover")
+def track_cover(track_id: int, current: CurrentUser = Depends(get_current_user)) -> Response:
+    # Same view policy for owners, shares and PUBLIC. ADMIN has no bypass.
+    if not copies.can_view_track(track_id=track_id, user_id=current.user_id):
+        raise HTTPException(status_code=404, detail="No encontrado")
+    with db.read_only() as cursor:
+        cursor.execute("SELECT cover_jpeg FROM TRACK_METADATA WHERE track_id = %s", (track_id,))
+        row = cursor.fetchone()
+    if not row or not row["cover_jpeg"]:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    return Response(content=bytes(row["cover_jpeg"]), media_type="image/jpeg", headers={
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Cross-Origin-Resource-Policy": "same-origin",
+    })
+
+
 def _resolve_delivery(track_id: int, user_id: int, action: str):
     """Resuelve la copia autorizada (propia, compartida o PUBLIC) y verifica disco."""
     copy, state = copies.resolve_for_action(track_id=track_id, user_id=user_id, action=action)
@@ -95,8 +119,11 @@ def _resolve_delivery(track_id: int, user_id: int, action: str):
     if state == "unavailable":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail="La copia no está disponible en este momento")
-    storage = get_storage()
-    fresh_size = storage.size(copy["relative_path"])
+    try:
+        storage = get_storage_for_source(copy["source_id"])
+        fresh_size = storage.size(copy["relative_path"])
+    except StorageError:
+        raise HTTPException(status_code=409, detail="La copia no está disponible en este momento") from None
     return storage, copy, fresh_size
 
 

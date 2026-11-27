@@ -31,6 +31,7 @@ class PlaylistSummary(BaseModel):
 
 
 class PlaylistTrack(BaseModel):
+    cover_url: str | None = None
     position: int
     track_id: int
     title: str

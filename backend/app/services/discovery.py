@@ -6,6 +6,7 @@ de usuarios que no publican.
 """
 
 from app.repositories import db
+from app.services.metadata import attach_cover_urls
 
 
 def accounts_with_public_copies() -> list[dict]:
@@ -47,4 +48,5 @@ def public_catalog(*, username: str) -> dict | None:
             (owner["user_id"],),
         )
         items = list(cursor.fetchall())
+    attach_cover_urls(items)
     return {"username": owner["username"], "display_name": owner["display_name"], "items": items}

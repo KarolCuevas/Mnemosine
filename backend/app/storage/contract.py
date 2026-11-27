@@ -7,10 +7,10 @@ interfaz. Nunca se expone una ruta física a clientes web ni a respuestas API.
 Diseño:
 - Las rutas son RELATIVAS y se normalizan siempre (ver normalize_relative_path);
   las absolutas, las de otra unidad y los '..' se rechazan.
-- Una carga se escribe primero en un temporal ('StagedUpload'), calcula su
+- LOCAL escribe primero en un temporal ('StagedUpload'), calcula su
   SHA-256 y solo entonces se publica con commit() de forma atómica.
 - commit() nunca sobrescribe un destino existente.
-- discard() y recover_stale_temps() cubren fallos a mitad de carga.
+- discard() limpia el temporal propio. recover_stale_temps() solo se usa offline.
 - La autorización se comprueba en la capa de servicios ANTES de llamar aquí;
   conocer la ruta relativa no concede acceso.
 """
@@ -21,6 +21,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from typing import Iterable, Iterator
 
 MAX_RELATIVE_PATH_LENGTH = 512
@@ -45,6 +46,48 @@ class DestinationExistsError(StorageError):
 
 class NotFoundError(StorageError):
     """El objeto no existe (o no es un archivo regular)."""
+
+
+class UnsupportedOperationError(StorageError):
+    """El adaptador no implementa la capacidad solicitada."""
+
+
+class SourceUnavailableError(StorageError):
+    """Fuente desconectada, propietario inactivo o adaptador no configurado."""
+
+
+class ObjectState(StrEnum):
+    FOUND = "FOUND"
+    NOT_ACCESSIBLE = "NOT_ACCESSIBLE"
+    NOT_FOUND = "NOT_FOUND"
+    AUTH_REQUIRED = "AUTH_REQUIRED"
+    RATE_LIMITED = "RATE_LIMITED"
+    TEMPORARY_ERROR = "TEMPORARY_ERROR"
+
+
+@dataclass(frozen=True)
+class StorageCapabilities:
+    read: bool = True
+    write: bool = False
+    ranges: bool = True
+    listing: bool = False
+    resumable_upload: bool = False
+    changes: bool = False
+    delete: bool = False
+
+
+@dataclass(frozen=True)
+class ObjectInfo:
+    object_id: str
+    state: ObjectState
+    size_bytes: int | None = None
+    version: str | None = None
+
+
+@dataclass(frozen=True)
+class ObjectPage:
+    items: list[ObjectInfo]
+    next_cursor: str | None = None
 
 
 def normalize_relative_path(relative_path: str) -> str:
@@ -83,44 +126,62 @@ class StagedUpload:
 
 
 class StorageAdapter(ABC):
-    """Contrato mínimo de almacenamiento de audio del MVP."""
+    """Objetos y capacidades. La preparación local es opcional, nunca obligatoria para lectores."""
+
+    capabilities = StorageCapabilities()
+
+    def require(self, capability: str) -> None:
+        if not getattr(self.capabilities, capability, False):
+            raise UnsupportedOperationError("operación no soportada por esta fuente")
 
     @abstractmethod
+    def stat(self, object_id: str) -> ObjectInfo: ...
+
+    @abstractmethod
+    def read_range(self, object_id: str, offset: int = 0, length: int | None = None) -> Iterator[bytes]: ...
+
+    def list_objects(self, *, cursor: str | None = None, limit: int = 50) -> ObjectPage:
+        raise UnsupportedOperationError("esta fuente no permite inventario")
+
     def save_stream(self, chunks: Iterable[bytes], *, max_bytes: int) -> StagedUpload:
         """Escribe el flujo en un temporal y calcula su SHA-256 y tamaño.
 
         Ante cualquier error (o si se supera max_bytes) el temporal se elimina
         y se propaga FileTooLargeError/StorageError. El objeto NO queda
         disponible hasta commit()."""
+        raise UnsupportedOperationError("esta fuente no prepara temporales locales")
 
-    @abstractmethod
     def commit(self, staged: StagedUpload, relative_path: str) -> str:
         """Publica el temporal en su destino de forma atómica.
 
         Devuelve la ruta relativa normalizada. Lanza DestinationExistsError si
         ya hay un objeto en el destino."""
+        raise UnsupportedOperationError("esta fuente no admite publicación local")
 
-    @abstractmethod
     def discard(self, staged: StagedUpload) -> None:
         """Elimina el temporal (p. ej. tras un fallo de transacción SQL)."""
+        raise UnsupportedOperationError("esta fuente no prepara temporales locales")
 
-    @abstractmethod
-    def exists(self, relative_path: str) -> bool: ...
+    def exists(self, relative_path: str) -> bool:
+        return self.stat(relative_path).state == ObjectState.FOUND
 
-    @abstractmethod
     def size(self, relative_path: str) -> int:
         """Bytes del objeto; NotFoundError si no existe."""
+        info = self.stat(relative_path)
+        if info.state != ObjectState.FOUND or info.size_bytes is None:
+            raise NotFoundError("objeto no disponible")
+        return info.size_bytes
 
-    @abstractmethod
     def stream_range(self, relative_path: str, offset: int = 0, length: int | None = None) -> Iterator[bytes]:
         """Itera bytes desde 'offset', como mucho 'length' (None = hasta EOF)."""
+        return self.read_range(relative_path, offset, length)
 
-    @abstractmethod
     def delete(self, relative_path: str) -> bool:
         """Borrado físico EXPLÍCITO. Devuelve True si borró algo.
 
         Ninguna cascada SQL debe disparar este método (plan §2, punto 9)."""
+        raise UnsupportedOperationError("esta fuente no admite borrado")
 
-    @abstractmethod
     def recover_stale_temps(self, older_than: datetime) -> int:
         """Borra temporales interrumpidos anteriores a 'older_than'. Devuelve cuántos."""
+        raise UnsupportedOperationError("esta fuente no prepara temporales locales")

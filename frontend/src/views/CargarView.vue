@@ -1,138 +1,113 @@
 <template>
-  <main class="min-h-screen bg-slate-950 pb-24 text-slate-100">
-    <header class="border-b border-slate-800">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <RouterLink :to="{ name: 'biblioteca' }" class="text-lg font-semibold tracking-wide text-teal-300">Mnemosine</RouterLink>
-        <RouterLink :to="{ name: 'biblioteca' }" class="text-sm text-slate-400 hover:text-teal-300">Volver a la biblioteca</RouterLink>
-      </div>
-    </header>
-
-    <section class="mx-auto max-w-2xl px-6 py-8">
-      <p class="text-xs font-medium uppercase tracking-[0.3em] text-teal-300">Cargar música</p>
-      <h1 class="mt-1 text-3xl font-semibold">Nueva canción</h1>
-      <p class="mt-2 text-sm text-slate-400">La carga es privada por defecto. El archivo se valida de verdad (contenido, no solo extensión) y se calcula su SHA-256.</p>
-
-      <form class="mt-6 space-y-4" @submit.prevent="onSubmit">
-        <div>
-          <label for="archivo" class="mb-1 block text-xs font-medium text-slate-400">Archivo de audio</label>
-          <input id="archivo" ref="fileInput" type="file" required
-            accept=".mp3,.m4a,.flac,.ogg,.wav,audio/mpeg,audio/flac,audio/ogg,audio/x-wav,audio/x-m4a"
-            class="block w-full text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-800 file:px-4 file:py-2 file:text-slate-200 hover:file:bg-slate-700"
-            @change="onFileChange" />
-          <p class="mt-1 text-[11px] text-slate-500">MP3, M4A, FLAC, OGG o WAV · máximo 50 MB</p>
-        </div>
-
-        <div>
-          <label for="titulo" class="mb-1 block text-xs font-medium text-slate-400">Título</label>
-          <input id="titulo" v-model="form.title" required maxlength="512"
-            class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 outline-none focus:border-teal-400" />
-        </div>
-        <div>
-          <label for="artista" class="mb-1 block text-xs font-medium text-slate-400">Artista</label>
-          <input id="artista" v-model="form.artist" required maxlength="255"
-            class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 outline-none focus:border-teal-400" />
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label for="album" class="mb-1 block text-xs font-medium text-slate-400">Álbum (opcional)</label>
-            <input id="album" v-model="form.album" maxlength="512"
-              class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 outline-none focus:border-teal-400" />
+  <div class="page"><section class="page-section">
+    <p class="eyebrow">HAZ CRECER TU COLECCIÓN</p>
+    <h1 class="mt-2 text-3xl font-semibold">Nueva canción</h1>
+    <p class="mt-3 text-slate-400">Sube tu audio con sus etiquetas y su portada.</p>
+    <div class="upload-layout">
+      <div class="min-w-0">
+        <form action="/api/tracks/upload" method="post" enctype="multipart/form-data" class="form-panel space-y-6" @submit.prevent="onSubmit">
+          <div class="upload-file">
+            <AppIcon name="upload" />
+            <label for="archivo" class="font-medium">Archivo de audio <span class="text-xs">(obligatorio)</span></label>
+            <p id="audio-help">MP3, M4A, FLAC, OGG o WAV · hasta 50 MB</p>
+            <input id="archivo" ref="fileInput" name="file" type="file" required :disabled="uploading" aria-describedby="audio-help"
+              accept=".mp3,.m4a,.flac,.ogg,.wav,audio/mpeg,audio/flac,audio/ogg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a" @change="onFileChange" />
           </div>
-          <div>
-            <label for="pista" class="mb-1 block text-xs font-medium text-slate-400">Pista (opcional)</label>
-            <input id="pista" v-model.number="form.track_number" type="number" min="1" max="1000"
-              class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 outline-none focus:border-teal-400" />
+          <p id="metadata-help" class="metadata-help">Leeremos las etiquetas y la portada al guardar. Puedes escribir correcciones abajo: los campos vacíos se completan con los datos del archivo.</p>
+          <fieldset class="upload-metadata" :disabled="uploading" aria-describedby="metadata-help">
+            <legend>Etiquetas (opcional)</legend>
+            <div><label for="titulo" class="field-label">Título</label><input id="titulo" v-model="form.title" name="title" maxlength="512" class="text-input" placeholder="Usar el título del archivo" /></div>
+            <div><label for="artista" class="field-label">Artista</label><input id="artista" v-model="form.artist" name="artist" maxlength="255" class="text-input" placeholder="Usar el artista del archivo" /></div>
+            <div><label for="album" class="field-label">Álbum (opcional)</label><input id="album" v-model="form.album" name="album" maxlength="512" class="text-input" placeholder="Usar el álbum del archivo" /></div>
+            <div><label for="pista" class="field-label">Pista (opcional)</label><input id="pista" v-model.number="form.track_number" name="track_number" type="number" min="1" max="1000" class="text-input" /></div>
+            <details class="upload-extra">
+              <summary>Más etiquetas</summary>
+              <div class="fields">
+                <div><label for="album-artist" class="field-label">Artista del álbum</label><input id="album-artist" v-model="form.album_artist" name="album_artist" maxlength="255" class="text-input" /></div>
+                <div><label for="genre" class="field-label">Género</label><input id="genre" v-model="form.genre" name="genre" maxlength="255" class="text-input" /></div>
+                <div><label for="disc-number" class="field-label">Disco</label><input id="disc-number" v-model.number="form.disc_number" name="disc_number" type="number" min="1" max="100" class="text-input" /></div>
+                <div><label for="release-year" class="field-label">Año</label><input id="release-year" v-model.number="form.release_year" name="release_year" type="number" min="1000" max="9999" class="text-input" /></div>
+              </div>
+            </details>
+          </fieldset>
+          <p v-if="error" ref="errorPanel" tabindex="-1" role="alert" class="rounded-lg border border-red-900 bg-red-950/60 p-3 text-sm text-red-300">{{ error }}</p>
+          <div v-if="uploading" class="space-y-2">
+            <label class="field-label" for="progreso">{{ progress === 100 ? 'Leyendo etiquetas y preparando la portada…' : `Subiendo… ${progress}%` }}</label>
+            <progress id="progreso" class="progress-teal h-2 w-full" :value="progress" max="100" aria-label="Progreso de la subida" />
           </div>
-        </div>
-
-        <p v-if="error" role="alert" class="rounded-lg border border-red-900 bg-red-950/60 px-3 py-2 text-sm text-red-300">{{ error }}</p>
-
-        <div v-if="uploading" class="space-y-1">
-          <label class="text-xs font-medium text-slate-400" for="progreso">Subiendo… {{ progress }}%</label>
-          <progress id="progreso" class="progress-teal h-3 w-full" :value="progress" max="100" aria-label="Progreso de la subida" />
-        </div>
-
-        <button type="submit" :disabled="uploading"
-          class="w-full rounded-lg bg-teal-500 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-teal-400 disabled:opacity-60">
-          {{ uploading ? 'Subiendo…' : 'Guardar como privada' }}
-        </button>
-      </form>
-
-      <div v-if="result" class="mt-6 rounded-xl border border-teal-900 bg-teal-950/40 px-4 py-4" role="status">
-        <p class="font-medium text-teal-300">“{{ result.title }}” subida correctamente.</p>
-        <p class="mt-1 text-sm text-slate-400">Duración {{ formatDuration(result.duration_seconds) }} · {{ formatBytes(result.size_bytes) }} · privada</p>
-        <div class="mt-3 flex gap-3">
-          <RouterLink :to="{ name: 'detalle', params: { id: result.track_id } }" class="rounded-lg bg-teal-500 px-3 py-1.5 text-sm font-medium text-slate-950 transition hover:bg-teal-400">Ver detalle</RouterLink>
-          <RouterLink :to="{ name: 'biblioteca' }" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400 hover:text-teal-300">Volver a la biblioteca</RouterLink>
+          <button type="submit" :disabled="uploading" class="button button-primary w-full"><AppIcon name="lock" />{{ uploading ? 'Guardando…' : 'Guardar como privada' }}</button>
+        </form>
+        <div v-if="result" ref="resultPanel" tabindex="-1" class="upload-result mt-6 rounded-xl border border-teal-800 bg-teal-950/40 p-5" role="status">
+          <TrackArtwork :src="result.cover_url" :seed="result.album || result.title" />
+          <div class="min-w-0">
+            <p class="font-medium text-teal-300">“{{ result.title }}” subida correctamente.</p>
+            <p class="mt-2 text-sm">{{ result.artist }}<span v-if="result.album"> · {{ result.album }}</span></p>
+            <p class="mt-2 text-sm text-slate-400">{{ formatDuration(result.duration_seconds) }} · {{ formatBytes(result.size_bytes) }} · privada</p>
+            <p v-if="!result.cover_url && !result.warnings?.length" class="mt-2 text-xs text-slate-400">El archivo no contiene una portada incrustada.</p>
+            <p v-for="warning in result.warnings" :key="warning" class="mt-2 text-sm text-amber-200">{{ warning }}</p>
+            <div class="mt-4 flex flex-wrap gap-3"><RouterLink :to="{ name: 'detalle', params: { id: result.track_id } }" class="button button-primary">Ver detalle</RouterLink><RouterLink to="/biblioteca" class="button button-secondary">Volver a la biblioteca</RouterLink></div>
+          </div>
         </div>
       </div>
-    </section>
-  </main>
+      <aside class="upload-tips">
+        <AppIcon name="music" /><h2>Su historia viene con ella.</h2>
+        <p>Importamos título, artistas, álbum, pista, disco, año y género cuando estén incluidos en el audio. La portada aparecerá en tu biblioteca y en el reproductor.</p>
+        <hr /><h3 class="font-medium">¿Faltan etiquetas?</h3>
+        <p>Puedes completarlas en el formulario. Si no hay título, usaremos el nombre del archivo; si no hay artista, aparecerá «Artista desconocido».</p>
+        <p>Tu canción se guarda como privada. Dispones de hasta 5 GB para tu colección, con un máximo de 50 MB por archivo.</p>
+      </aside>
+    </div>
+  </section></div>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
-import { api, uploadWithProgress, ApiError } from '../services/api'
+import { nextTick, reactive, ref } from 'vue'
+import AppIcon from '../components/AppIcon.vue'
+import TrackArtwork from '../components/TrackArtwork.vue'
+import { uploadWithProgress, ApiError } from '../services/api'
 import { formatBytes, formatDuration } from '../services/format'
 
-const fileInput = ref(null)
-const uploading = ref(false)
-const progress = ref(0)
-const error = ref('')
-const result = ref(null)
+const fileInput = ref(null), uploading = ref(false), progress = ref(0)
+const error = ref(''), result = ref(null), errorPanel = ref(null), resultPanel = ref(null)
+const emptyForm = () => ({ title: '', artist: '', album: '', track_number: null, disc_number: null, release_year: null, album_artist: '', genre: '' })
+const form = reactive(emptyForm())
 
-const form = reactive({
-  title: '',
-  artist: '',
-  album: '',
-  track_number: null
-})
+function onFileChange() {
+  error.value = ''
+  result.value = null
+}
 
-function onFileChange(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-  if (!form.title) {
-    const base = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim()
-    form.title = base.charAt(0).toUpperCase() + base.slice(1)
-  }
+async function showError(message) {
+  error.value = message
+  await nextTick()
+  errorPanel.value?.focus()
 }
 
 async function onSubmit() {
+  if (uploading.value) return
   error.value = ''
   result.value = null
   const file = fileInput.value?.files?.[0]
-  if (!file) {
-    error.value = 'Elige un archivo de audio.'
-    return
-  }
-  if (file.size > 50 * 1024 * 1024) {
-    error.value = 'El archivo supera el máximo de 50 MB.'
-    return
-  }
+  if (!file) return showError('Elige un archivo de audio.')
+  if (file.size > 50 * 1024 * 1024) return showError('El archivo supera el máximo de 50 MB.')
   const data = new FormData()
   data.append('file', file)
-  data.append('title', form.title.trim())
-  data.append('artist', form.artist.trim())
-  if (form.album?.trim()) data.append('album', form.album.trim())
-  if (form.track_number) data.append('track_number', String(form.track_number))
-
+  for (const [key, value] of Object.entries(form)) {
+    const text = value == null ? '' : String(value).trim()
+    if (text) data.append(key, text)
+  }
   uploading.value = true
   progress.value = 0
   try {
-    result.value = await uploadWithProgress(data, { onProgress: (value) => { progress.value = value } })
-    form.title = ''
-    form.artist = ''
-    form.album = ''
-    form.track_number = null
+    result.value = await uploadWithProgress(data, { onProgress: value => { progress.value = value } })
+    Object.assign(form, emptyForm())
     if (fileInput.value) fileInput.value.value = ''
+    await nextTick()
+    resultPanel.value?.focus()
   } catch (err) {
-    if (err instanceof ApiError && err.status === 413) {
-      error.value = 'El archivo o tu cuota superan el límite (50 MB / 5 GB).'
-    } else if (err instanceof ApiError) {
-      error.value = err.message
-    } else {
-      error.value = 'No se pudo subir el archivo. Revisa tu conexión e inténtalo de nuevo.'
-    }
+    await showError(err instanceof ApiError && err.status === 413
+      ? 'El archivo o tu cuota superan el límite (50 MB / 5 GB).'
+      : err instanceof ApiError ? err.message : 'No se pudo subir el archivo. Revisa tu conexión e inténtalo de nuevo.')
   } finally {
     uploading.value = false
   }

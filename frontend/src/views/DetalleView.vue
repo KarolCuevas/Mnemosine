@@ -1,73 +1,43 @@
 <template>
-  <main class="min-h-screen bg-slate-950 pb-24 text-slate-100">
-    <header class="border-b border-slate-800">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <RouterLink :to="{ name: 'biblioteca' }" class="text-lg font-semibold tracking-wide text-teal-300">Mnemosine</RouterLink>
-        <RouterLink :to="{ name: 'biblioteca' }" class="text-sm text-slate-400 hover:text-teal-300">Volver a la biblioteca</RouterLink>
+  <div class="page detalle-page"><section class="page-section">
+    <RouterLink to="/biblioteca" class="text-link mb-6"><AppIcon name="back" /> Tu biblioteca</RouterLink>
+    <p v-if="loading" class="muted py-10" role="status">Cargando canción…</p>
+    <div v-else-if="error" role="alert" class="rounded-xl border border-red-900 bg-red-950/60 p-5 text-red-300">{{ error }}</div>
+    <template v-else-if="track">
+      <div class="song-hero">
+        <TrackArtwork :src="track.cover_url" :seed="track.album || track.title" />
+        <div class="min-w-0"><p class="eyebrow">{{ ownCopy ? 'EN TU BIBLIOTECA' : 'COMPARTIDA CONTIGO' }}</p><h1>{{ track.title }}</h1><p class="song-artist">{{ track.artists }}</p><p v-if="track.album" class="muted mt-2">{{ track.album }}<span v-if="track.release_year"> · {{ track.release_year }}</span></p><p class="muted mt-2 text-xs">{{ formatDuration(track.duration_seconds) }}</p>
+          <div class="mt-6 flex flex-wrap gap-3"><button type="button" class="button button-primary" :disabled="!track.access.can_stream" :aria-label="`Reproducir ${track.title}`" @click="play"><AppIcon name="play" /> Reproducir</button><a v-if="track.access.can_download" :href="downloadHref" download aria-label="Descargar el archivo original" class="button button-secondary">Descargar</a><span v-else class="muted self-center text-xs">Descarga no autorizada</span></div>
+        </div>
       </div>
-    </header>
-
-    <section class="mx-auto max-w-2xl px-6 py-8">
-      <p v-if="loading" class="text-slate-400">Cargando…</p>
-      <div v-else-if="error" role="alert" class="rounded-lg border border-red-900 bg-red-950/60 px-4 py-4 text-center text-red-300">{{ error }}</div>
-
-      <template v-else-if="track">
-        <div class="flex items-start gap-5">
-          <div class="flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/30 to-slate-800" aria-hidden="true">
-            <svg viewBox="0 0 24 24" class="h-12 w-12 text-teal-300" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+      <div class="detail-layout">
+        <div class="min-w-0">
+          <div class="form-panel"><h2 class="text-lg font-medium">Dale un lugar en tus listas</h2><p class="muted mt-2 text-sm">Guarda esta canción para el próximo momento.</p>
+            <div class="mt-5 flex flex-wrap items-end gap-3"><div class="min-w-0 flex-1"><label class="field-label" for="add-to-list">Añadir a una lista</label><select id="add-to-list" v-model="selectedPlaylist" class="text-input"><option value="">{{ playlists.length ? 'Elige una lista…' : 'Todavía no tienes listas' }}</option><option v-for="playlist in playlists" :key="playlist.playlist_id" :value="playlist.playlist_id">{{ playlist.name }}</option></select></div><button type="button" class="button button-secondary" :disabled="!selectedPlaylist || addingToList" @click="addToList">{{ addingToList ? 'Añadiendo…' : 'Añadir' }}</button></div><p v-if="listMessage" role="status" class="mt-3 text-sm text-teal-300">{{ listMessage }}</p><RouterLink v-if="!playlists.length" to="/listas" class="text-link mt-4 text-sm">Crear mi primera lista <AppIcon name="arrow" /></RouterLink>
           </div>
-          <div class="min-w-0">
-            <h1 class="text-2xl font-semibold leading-tight">{{ track.title }}</h1>
-            <p class="mt-1 text-lg text-slate-300">{{ track.artists }}</p>
-            <p v-if="track.album" class="text-sm text-slate-400">{{ track.album }}<span v-if="track.release_year"> · {{ track.release_year }}</span></p>
-            <p class="mt-2 text-xs text-slate-500">Duración {{ formatDuration(track.duration_seconds) }}</p>
-          </div>
+          <PermisosPanel v-if="ownCopy" :location-id="ownCopy.location_id" class="mt-6" @updated="load" />
         </div>
-
-        <div class="mt-6 flex flex-wrap gap-3">
-          <button type="button" class="rounded-lg bg-teal-500 px-4 py-2 font-medium text-slate-950 transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-40"
-            :disabled="!track.access.can_stream" :aria-label="`Reproducir ${track.title}`" @click="play">
-            Reproducir
-          </button>
-          <a v-if="track.access.can_download" class="rounded-lg border border-slate-700 px-4 py-2 text-slate-300 transition hover:border-teal-400 hover:text-teal-300"
-            :href="downloadHref" download aria-label="Descargar el archivo original">Descargar</a>
-          <span v-else class="rounded-lg border border-slate-800 px-4 py-2 text-slate-600">Descarga no autorizada</span>
-        </div>
-
-        <div class="mt-4 flex flex-wrap items-center gap-2">
-          <label class="text-xs text-slate-400" for="add-to-list">Añadir a una lista</label>
-          <select id="add-to-list" v-model="selectedPlaylist" class="max-w-48 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none focus:border-teal-400">
-            <option value="">Elige…</option>
-            <option v-for="playlist in playlists" :key="playlist.playlist_id" :value="playlist.playlist_id">{{ playlist.name }}</option>
-          </select>
-          <button type="button" class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-teal-400 hover:text-teal-300 disabled:opacity-50"
-            :disabled="!selectedPlaylist || addingToList" @click="addToList">Añadir</button>
-          <span v-if="listMessage" role="status" class="text-xs text-teal-300">{{ listMessage }}</span>
-        </div>
-
-        <PermisosPanel v-if="ownCopy" :location-id="ownCopy.location_id" class="mt-6" @updated="load" />
-
-        <dl v-if="ownCopy" class="mt-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4 text-sm">
-          <div><dt class="text-xs text-slate-500">Visibilidad</dt><dd class="mt-0.5 text-slate-200">{{ ownCopy.visibility === 'PRIVATE' ? 'Privada' : 'Pública' }}</dd></div>
-          <div><dt class="text-xs text-slate-500">Disponibilidad</dt><dd class="mt-0.5 text-slate-200">{{ ownCopy.availability === 'AVAILABLE' ? 'Disponible' : 'No disponible' }}</dd></div>
-          <div><dt class="text-xs text-slate-500">Tamaño</dt><dd class="mt-0.5 text-slate-200">{{ formatBytes(ownCopy.size_bytes) }}</dd></div>
-          <div><dt class="text-xs text-slate-500">Formato</dt><dd class="mt-0.5 text-slate-200">{{ ownCopy.mime_type }}</dd></div>
-          <div class="col-span-2"><dt class="text-xs text-slate-500">SHA-256</dt><dd class="mt-0.5 break-all font-mono text-xs text-slate-400">{{ ownCopy.sha256 }}</dd></div>
-        </dl>
-
-        <h2 v-if="track.copies.length" class="mt-6 text-sm font-medium text-slate-400">Copias en tu biblioteca</h2>
-        <ul v-if="track.copies.length" class="mt-2 divide-y divide-slate-800 rounded-xl border border-slate-800">
-          <li v-for="copy in track.copies" :key="copy.location_id" class="flex items-center justify-between gap-4 px-4 py-2 text-xs text-slate-400">
-            <span>Copia #{{ copy.location_id }} · {{ formatBytes(copy.size_bytes) }} · {{ copy.mime_type }}</span>
-            <span :class="copy.availability === 'AVAILABLE' ? 'text-teal-400' : 'text-amber-400'">{{ copy.availability === 'AVAILABLE' ? 'Disponible' : 'No disponible' }}</span>
-          </li>
-        </ul>
-      </template>
-    </section>
-  </main>
+        <aside v-if="ownCopy" class="file-panel">
+          <p class="eyebrow">TU ARCHIVO</p><h2 class="mt-3 text-xl font-medium">Los detalles también cuentan.</h2>
+          <dl v-if="track.album_artist || track.genre || track.track_number || track.disc_number || track.release_year" class="file-facts" aria-label="Etiquetas de la canción">
+            <div v-if="track.album_artist"><dt>Artista del álbum</dt><dd>{{ track.album_artist }}</dd></div>
+            <div v-if="track.genre"><dt>Género</dt><dd>{{ track.genre }}</dd></div>
+            <div v-if="track.release_year"><dt>Año</dt><dd>{{ track.release_year }}</dd></div>
+            <div v-if="track.track_number"><dt>Pista</dt><dd>{{ track.track_number }}</dd></div>
+            <div v-if="track.disc_number"><dt>Disco</dt><dd>{{ track.disc_number }}</dd></div>
+          </dl>
+          <dl class="file-facts"><div><dt>Visibilidad</dt><dd>{{ ownCopy.visibility === 'PRIVATE' ? 'Privada' : 'Pública' }}</dd></div><div><dt>Disponibilidad</dt><dd>{{ ownCopy.availability === 'AVAILABLE' ? 'Disponible' : 'No disponible' }}</dd></div><div><dt>Tamaño</dt><dd>{{ formatBytes(ownCopy.size_bytes) }}</dd></div><div><dt>Formato</dt><dd>{{ ownCopy.mime_type }}</dd></div></dl>
+          <details class="file-technical"><summary>Información técnica</summary><p class="muted mt-3 text-xs">Huella SHA-256</p><p class="mt-2 break-all font-mono text-xs text-slate-400">{{ ownCopy.sha256 }}</p></details>
+          <h3 v-if="track.copies.length" class="mt-6 text-sm font-medium">Copias en tu biblioteca</h3><ul class="mt-3 space-y-3"><li v-for="copy in track.copies" :key="copy.location_id" class="rounded-lg border border-slate-700 p-3 text-xs"><span class="block text-slate-300">Copia #{{ copy.location_id }} · {{ formatBytes(copy.size_bytes) }}</span><span class="mt-1 block" :class="copy.availability === 'AVAILABLE' ? 'text-teal-300' : 'text-amber-300'">{{ copy.availability === 'AVAILABLE' ? 'Disponible' : 'No disponible' }}</span></li></ul>
+        </aside>
+      </div>
+    </template>
+  </section></div>
 </template>
 
 <script setup>
+import AppIcon from '../components/AppIcon.vue'
+import TrackArtwork from '../components/TrackArtwork.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api, ApiError } from '../services/api'
@@ -119,6 +89,7 @@ function play() {
     title: track.value.title,
     artists: track.value.artists,
     album: track.value.album,
+    cover_url: track.value.cover_url,
     duration_seconds: track.value.duration_seconds,
     available: true
   })

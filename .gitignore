@@ -13,9 +13,13 @@ storage/*
 !storage/README.md
 !storage/.gitkeep
 backups/
+.secrets/
+client_secret_*.json
 *.log
 .DS_Store
 Thumbs.db
 CZM ONLY.md
 test-results/
 playwright-report/
+.publish/
+.railway/

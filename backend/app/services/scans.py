@@ -19,7 +19,7 @@ from pathlib import Path
 from app.core.config import get_settings
 from app.repositories import db, operations
 from app.services import audio as audio_probe
-from app.services import catalog
+from app.services import catalog, quota
 
 
 class SourcePathError(Exception):
@@ -128,7 +128,7 @@ def create_scan_job(*, source_id: int, owner_user_id: int) -> dict:
         if cursor.fetchone() is None:
             raise SourcePathError("el propietario indicado no existe o está desactivado")
         cursor.execute(
-            "SELECT source_id, status FROM SOURCE WHERE source_id = %s LIMIT 1",
+            "SELECT source_id, status, adapter_code FROM SOURCE WHERE source_id = %s LIMIT 1",
             (source_id,),
         )
         source = cursor.fetchone()
@@ -136,6 +136,8 @@ def create_scan_job(*, source_id: int, owner_user_id: int) -> dict:
             raise SourcePathError("la fuente no existe")
         if source["status"] != "ACTIVE":
             raise SourcePathError("la fuente está desconectada")
+        if source["adapter_code"] != "LOCAL":
+            raise SourcePathError("el escaneo de carpetas solo admite fuentes locales")
         cursor.execute(
             "INSERT INTO SCAN_JOB (source_id, owner_user_id, status) VALUES (%s, %s, 'PENDING')",
             (source_id, owner_user_id),
@@ -421,6 +423,7 @@ def _import_one(*, scan_job_id: int, source_id: int, owner_user_id: int, root: P
 
     with db.transaction() as cursor:
         # Volver a comprobar dentro de la transacción final.
+        quota.lock_account(cursor, owner_user_id)
         cursor.execute(
             "SELECT location_id FROM TRACK_LOCATION WHERE source_id = %s AND relative_path = %s LIMIT 1",
             (source_id, relative_path),
@@ -436,6 +439,7 @@ def _import_one(*, scan_job_id: int, source_id: int, owner_user_id: int, root: P
                 "duration_seconds": duration,
                 "detail": "ya importada anteriormente (carrera); se omite",
             }
+        quota.check_capacity(cursor, owner_user_id, size_bytes)
         artist_id = catalog.find_or_create_artist(cursor, artist_name)
         album_id = catalog.find_or_create_album(cursor, album_title, year)
         cursor.execute(

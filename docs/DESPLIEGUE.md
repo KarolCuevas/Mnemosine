@@ -4,8 +4,8 @@ El MVP local funciona en `127.0.0.1`. Para exponer la aplicación fuera del
 equipo, los mínimos son:
 
 1. **HTTPS** con un proxy inverso (Caddy o nginx) delante del frontend y de la API.
-2. `SESSION_COOKIE_SECURE=true` en `backend/.env` (sin esto, la cookie de sesión
-   no viaja por HTTPS).
+2. `SESSION_COOKIE_SECURE=true` en `backend/.env` para que la cookie de sesión
+   solo viaje por HTTPS.
 3. MySQL accesible **solo** desde 127.0.0.1 (ya lo fija `compose.yaml`). No lo
    expongas a Internet.
 4. Respaldos regulares y probados (`docs/MANUAL.md §5`).
@@ -69,3 +69,36 @@ server {
 3. `frontend`: `npm ci`; `npm run build`
 4. Reinicia uvicorn y el proxy inverso.
 5. Repite respaldo/restauración de verificación.
+
+## Google Drive y OAuth
+
+Configura el origen HTTPS definitivo en `GOOGLE_APP_ORIGIN`, registra ese origen
+y el retorno `/api/integrations/google_drive/callback` en el cliente OAuth y
+añade el sitio a las restricciones de la clave de Picker. No uses el cliente de
+desarrollo sin revisar estos valores. Las variables y las claves se describen en
+[GOOGLE_DRIVE_CONFIGURACION.md](GOOGLE_DRIVE_CONFIGURACION.md).
+
+La API borra los parámetros del callback antes de registrar la respuesta de
+Uvicorn. Los proxies y servicios de observabilidad deben omitir `code`, `state`,
+cabeceras de autorización, cookies y cuerpos con credenciales de sus registros.
+No cachees `/api/integrations/google_drive/`. En nginx, agrega esta ubicación
+exacta dentro del mismo `server` del ejemplo para evitar guardar la consulta:
+
+```nginx
+location = /api/integrations/google_drive/callback {
+    access_log off;
+    proxy_pass http://127.0.0.1:8000;
+    proxy_set_header Host $host;
+}
+```
+
+Esto afecta solo al log de acceso de esa ruta; conserva la supervisión de errores
+sin credenciales. Revisa también los logs de cualquier CDN o proxy anterior.
+[Directiva oficial access_log](https://nginx.org/en/docs/http/ngx_http_log_module.html#access_log).
+
+Custodia los archivos privados fuera del repositorio y de carpetas sincronizadas,
+con lectura limitada al servicio y al administrador. Los procesos de la misma
+instalación comparten MySQL y las claves versionadas para serializar renovaciones.
+`scripts.restore` descarta credenciales OAuth y exige reconexión, además de cancelar
+trabajos pendientes. El respaldo de la clave se guarda por separado del SQL;
+los archivos de Drive no forman parte del respaldo de audio local.

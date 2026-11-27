@@ -1,5 +1,49 @@
 # Verificación de la base, Fase 1 y Fase 2
 
+## Integraciones — 25 de noviembre de 2026
+
+Primera entrega del plan: I0, bases de I1 e I5. No equivale a aceptar las fases
+Drive I2–I4 ni la entrega integrada I6. Detalle en [INTEGRACIONES.md](INTEGRACIONES.md).
+
+- `unittest discover`: **8 pruebas correctas** (lista blanca de metadatos, ediciones,
+  escape de búsquedas, cursores firmados, 401/403/404/429/5xx, Retry-After,
+  compatibilidad de rutas y temporales locales).
+- `scripts.verify_integrations`: **45 comprobaciones correctas** sobre una base
+  MySQL única y temporal: migración 0013→0015 sin cambiar ruta/hash/dueño,
+  idempotencia, búsqueda/caché/índice, referencia privada A/B/admin, CSRF,
+  refresh, colección sin audio, bloqueo compartido entre procesos, carga inválida,
+  cuota con dos cargas simultáneas, fuente desconectada y módulo de solo lectura
+  usado por inventario y entrega comunes. Se simula HTTP externo en esta suite.
+- Regresión: permisos **13 escenarios**, aislamiento **26**, recorrido H3 **30**,
+  compartición H4 **37**, fuentes H5 **29**, todos correctos.
+- `npm run build`: correcto (51 módulos).
+- Playwright: **2 pruebas correctas**; login/logout real contra API de prueba y
+  referencias con respuestas de catálogo controladas: búsqueda explícita, guardar,
+  consultar/quitar de colección, aviso de 429 y recuperación. Sin errores de página.
+- Capturas de escritorio y móvil 390×844 revisadas. Sin desbordamiento horizontal;
+  referencias sin botones de audio y sin barra vacía. El reproductor de la biblioteca
+  puede seguir visible si hay una canción propia seleccionada.
+- Prueba externa real: búsqueda `Clair de lune` / `Claude Debussy`, cinco registros
+  de MusicBrainz indexados. Lookup real del MBID
+  `bfb01dcd-7001-4164-9173-4db504600896` correcto (una edición conocida).
+  El primer lookup agotó su timeout; una repetición posterior respondió correctamente.
+- Configuración local: MusicBrainz habilitado con `czmprojects@gmail.com` en `.env`
+  excluido de Git; `.env.example` lo deja desactivado para otras instalaciones.
+- Respaldo previo: `backups/integrations-before-0014/20261125-231531`, 20 tablas,
+  12 archivos, 90.228.542 bytes. Restauración verificada en base separada
+  `mnemosine_restore_i0_b2b119`; script existente comprobó checksum del dump,
+  conteos de filas y cantidad de archivos (no una comparación byte a byte del audio).
+- Migraciones 0014 y 0015 aplicadas al MySQL local tras esa restauración de prueba.
+
+Pendiente: Google Cloud, OAuth/Picker, credenciales cifradas, adaptador y trabajador
+Drive, copias remotas/recuperación y aceptación con dos cuentas reales. Las advertencias
+de deprecación de Starlette/TestClient siguen presentes; no impidieron las pruebas.
+
+---
+
+Las secciones siguientes son el registro histórico de H1–H6; sus pendientes deben
+leerse con la fecha de cada fase.
+
 Fecha: 16 de noviembre de 2026.
 
 ## Entorno
@@ -234,11 +278,32 @@ Fecha: 16 de noviembre de 2026.
 - Limitación conocida y documentada: la DDL de migraciones no promete rollback
   transaccional (commit implícito de MySQL); el ejecutor se detiene ante fallos.
 
+## Rediseño UX/UI — 27 de noviembre de 2026
+
+- Estructura común de navegación: lateral en escritorio y desplegable en móvil;
+  el contenido ocupa el ancho disponible y el reproductor tiene su propia fila,
+  sin tapar controles al final de las páginas.
+- Biblioteca con lista/tarjetas, búsqueda, reintento de errores y estados vacíos;
+  acceso, carga, listas, descubrimiento, referencias y detalle con el mismo tema.
+- Tablas de administración con desplazamiento dentro de su región, menú usable
+  con teclado, foco al navegar, respeto de movimiento reducido y controles de
+  formulario de 16 px en móvil.
+- `npm run build`: correcto. `python -m scripts.e2e`: **13/13 pruebas**.
+  Incluye acceso real contra `mnemosine_e2e` y las referencias existentes.
+  La base temporal se elimina al finalizar; la biblioteca real no se modifica.
+- Nueva suite `frontend/e2e/ui.spec.js`: nueve pantallas a **320, 390, 768, 1024,
+  1440, 1920 y 2560 px**, sin desbordamiento horizontal de la página ni del
+  contenido, y sin superposición del reproductor. Capturas revisadas en Chromium.
+  Los datos de biblioteca y las respuestas de subida de esta suite son sintéticos;
+  la reproducción utiliza un WAV de prueba y el elemento de audio del navegador.
+- Interacciones comprobadas: menú móvil por teclado, creación de listas, búsqueda,
+  vista de tarjetas, registro y subida, errores/reintento, canción correcta cuando
+  hay archivos no disponibles, persistencia al navegar y parada al cerrar sesión.
+
 ## Pendiente
 
-- Prueba visual móvil de la interfaz en un navegador real (Chrome/Firefox en
-  escritorio y Chrome Android o simulación device) — la aplicación es
-  adaptativa, pero falta el check de aceptación final.
+- Aceptación visual en el dispositivo habitual del usuario; la matriz de tamaños
+  anterior ya se verificó en Chromium, pendiente contraste en otros navegadores.
 - Commit y push de Fase 6 (pendiente de tu ok: `main` va por delante de origin).
 - La decisión D11 (Playwright) ya tiene su primer e2e; H6 deja el terreno para
   la suite completa.
@@ -256,3 +321,132 @@ Fecha: 16 de noviembre de 2026.
   `mnemosine` contiene una cuenta ADMIN creada por el usuario
   (`python -m scripts.create_admin`); los usuarios A/B deben crearse por invitación
   cuando se quiera probar el aislamiento en el navegador.
+
+## Integraciones y preparación de Google — 27/11/2026
+
+- `python -m unittest discover -s ../tests/unit -p test_integrations.py -v`:
+  **8/8 correctas**. La primera ejecución tuvo una restricción de permisos al
+  crear un enlace duro temporal; la ejecución con los permisos necesarios pasó.
+- `python -m scripts.verify_integrations`: **45/45 comprobaciones correctas**
+  después de que el usuario encendiera Docker. Verifica migraciones, catálogo,
+  referencias privadas entre A/B/ADMIN, CSRF, caché, límites, cuota concurrente,
+  archivos locales y adaptador de solo lectura. Crea una base única y audio
+  temporal, y elimina sus propios datos al terminar; no altera la biblioteca real.
+- La suite usa respuestas simuladas del proveedor externo. Estos resultados no
+  representan pruebas reales de OAuth, Picker ni almacenamiento de Google Drive.
+- Consola del proyecto `mnemosine-516014`: Drive API y Picker API habilitadas,
+  audiencia externa en pruebas y las dos cuentas piloto presentes. Se conservó
+  la tercera cuenta de prueba que ya existía.
+- La lista de alcances estaba vacía. Se declaró únicamente `drive.file` y Google
+  confirmó que se guardaron los cambios. No se concedió acceso a archivos de
+  ninguna cuenta durante esta revisión.
+- JSON OAuth de Descargas: proyecto, tipo web, presencia de credenciales, origen
+  `http://127.0.0.1:5173` y retorno
+  `http://127.0.0.1:5173/api/integrations/google_drive/callback` comprobados.
+  No se intercambió ningún código por tokens.
+- Con autorización explícita del usuario se creó `Mnemosine Picker desarrollo`.
+  Tras recargar la consola se comprobaron las restricciones: Google Picker API,
+  `http://127.0.0.1:5173/*` y `https://docs.google.com/*`.
+- Al terminar esa revisión quedaban pendientes I2/I3 y la aceptación real A/B.
+  La implementación posterior de I2 se documenta a continuación; la preparación
+  de Google por sí sola no acredita estos recorridos.
+
+## Conexiones Google implementadas — 27/11/2026
+
+- **5/5** pruebas unitarias en `tests/unit/test_google_drive.py`: cifrado ligado
+  al propietario, alteración de ciphertext, rotación de claves, límites HTTP,
+  errores sanitizados, revocación idempotente y metadatos malformados.
+- **71/71** comprobaciones de `python -m scripts.verify_google_drive`: MySQL real
+  temporal, Google simulado y tres usuarios A/B/ADMIN. Comprueban state/PKCE,
+  expiración, uso único, sesión concreta, cierre de sesión durante OAuth, alcance
+  exacto, identidad al reconectar, privacidad sin bypass de ADMIN, renovación
+  serializada, revocación fallida/reintento, selección idempotente incluso al
+  límite, rechazo de IDs no accesibles y restauración sin reactivar credenciales.
+  La base y archivos de la prueba se eliminan al terminar.
+- **45/45** comprobaciones de `scripts.verify_integrations` correctas después
+  de introducir 0016: migraciones anteriores, catálogo, referencias, aislamiento,
+  almacenamiento local y adaptador de solo lectura.
+- **14/14** pruebas de interfaz en `scripts.e2e`, incluida la nueva prueba de
+  Drive: carga del selector solo al elegir, token temporal fuera del almacenamiento
+  del navegador, IDs revalidados por el servidor, cancelación de desconexión,
+  solicitud de reconexión y desconexión. Google/Picker simulados; inicio de sesión
+  contra MySQL temporal. Capturas de Drive en escritorio y móvil revisadas.
+- `npm run build` correcto. Estas suites no conectan cuentas reales de Google,
+  no validan bytes remotos y no prueban reproducción ni transferencia de Drive.
+- Configuración local instalada en `backend/.secrets/`, excluida de Git, con
+  cliente OAuth del proyecto, clave restringida de Picker y clave independiente
+  de cifrado. `GOOGLE_DRIVE_ENABLED=true`; origen `http://127.0.0.1:5173`.
+- Antes de aplicar 0016 se detuvo el servidor y se creó el respaldo
+  `backups/google-before-0016/20261127-155547`: **25 tablas**, dump de **59.998
+  bytes**, **12 archivos de audio / 90.228.542 bytes**. Prefijo SHA-256 del dump:
+  `68fd607fb69da2c7`. Se conservó el respaldo; no se hizo una restauración sobre
+  la biblioteca real.
+- Migración 0016 aplicada a `mnemosine`. Se compararon con el manifiesto los
+  conteos de todas las tablas anteriores; coinciden, salvo el incremento esperado
+  de una migración registrada. Las nuevas conexiones estaban vacías.
+- API 0.6.0 reiniciada en `127.0.0.1:8000`, Vite disponible en `127.0.0.1:5173`.
+  Endpoint protegido devuelve 401 sin sesión. Callback con valores ficticios
+  devuelve 303 al destino fijo, sin caché; se comprobó que el log de Uvicorn
+  contiene la ruta pero no el código ni el estado ficticios.
+- **Pendiente manual:** entrar en Mnemosine, autorizar Google A, elegir un audio
+  de prueba y repetir con B desde otra cuenta de Mnemosine. Hasta observar ambos
+  recorridos, I2 no tiene aceptación real completa. I3/I4 siguen pendientes.
+
+## Etiquetas y portadas en la subida — 27/11/2026
+
+- Corregida la carga que solo guardaba el formulario: las nuevas subidas importan
+  etiquetas y portada incrustadas. Los valores manuales tienen prioridad y los
+  campos vacíos usan el audio. Título/artista dejan de ser obligatorios.
+- `scripts.verify_media`: **54/54** comprobaciones con FLAC, MP3, M4A, OGG y WAV
+  sintéticos generados con FFmpeg. Subida real sin formulario, varios artistas,
+  álbum, artista del álbum, género, pista, disco y año, portada JPEG legible,
+  audio original íntegro y SHA-256 idéntico. También comprueba correcciones
+  manuales, ausencia de etiquetas, portada dañada, rechazo de audio falso y
+  compensación de una transacción fallida sin archivos ni filas residuales.
+- Portadas protegidas: A/B/ADMIN, anónimo, share solo de descarga, revocación,
+  publicación y vuelta a privado, desactivación de cuenta, biblioteca propia,
+  compartidas, descubrimiento y listas. No se otorga acceso extra a ADMIN.
+- **23/23** pruebas unitarias, incluidas **10** nuevas de metadatos: ID3 en WAV
+  real, MP4, Vorbis/FLAC/OGG, carátula frontal, límites, Unicode, números,
+  imágenes inválidas y eliminación de EXIF. `scripts.verify_journey`: **30/30**.
+- `scripts.e2e`: **15/15** pruebas en Chromium. La prueba nueva sube un WAV
+  etiquetado contra la API y MySQL temporales, verifica el resultado, detalle,
+  biblioteca, cuadrícula y reproductor con imágenes cargadas, también a 320 px.
+  La suite de diseño conserva las comprobaciones entre 320 y 2560 px. Capturas
+  revisadas en escritorio y móvil. E2E ahora aísla también el almacenamiento,
+  genera su audio de prueba y detiene el árbol de procesos en Windows; rechaza
+  puertos de prueba ocupados para evitar usar servidores antiguos.
+- `npm run build`, `pip check` y `git diff --check`: correctos. Migración 0017
+  aplicada en la base local; comprobación de tablas correcta. API reiniciada y
+  comprobada: portada disponible como ruta protegida y solo el archivo requerido
+  en el formulario de subida.
+- No se reprocesaron canciones anteriores ni se consultaron catálogos externos.
+  La importación de audio desde Drive continúa su plan separado; esta prueba
+  verifica la carga de archivos locales en el servidor.
+
+Reproducir desde `backend`: `python -m unittest discover -s ../tests/unit -v`,
+`python -m scripts.verify_media`, `python -m scripts.verify_journey` y
+`python -m scripts.e2e`. `verify_media` requiere FFmpeg en PATH o la variable
+`MEDIA_TEST_FFMPEG`; es una herramienta de pruebas, no una dependencia de la app.
+
+## Preparación de publicación — 27/11/2026
+
+- `npm run build` y las **23 pruebas unitarias anteriores** correctas.
+- Añadidas **3 pruebas de entrega web**: navegación directa de Vue, caché de
+  assets, 404 para API desconocida/archivos privados y rechazo de métodos no
+  admitidos. Pasan con los permisos de ejecución necesarios en este equipo.
+- Imagen `mnemosine:publicacion` construida correctamente en Linux con Node 24,
+  Python 3.14 y las dependencias fijadas. Contexto Docker limitado al código:
+  no incluye `.env`, claves, respaldos ni biblioteca local.
+- `scripts.verify_release` correcto con MySQL 8.4 y volumen desechables: las 17
+  migraciones, API y Vue en el mismo puerto, proceso UID 10001, cookies Secure,
+  inicio de sesión, subida WAV sintética, descarga idéntica, rangos y conservación
+  de archivo/sesión tras reiniciar. Se corrigió la prueba para consultar el puerto
+  aleatorio nuevo de Docker Desktop después del reinicio. Los recursos temporales
+  se retiraron; los datos locales no se modificaron.
+- Comprobación de archivos publicables: sin patrones de claves Google, secretos
+  OAuth, tokens GitHub ni claves privadas. Esta comprobación no sustituye una
+  revisión completa del historial anterior.
+- El usuario eligió Railway en su prueba gratuita, sin contratar un plan. El
+  despliegue remoto y el envío a GitHub aún requieren acceso a esas cuentas.
+  Preparación y límites descritos en `PUBLICACION_RAILWAY.md`.

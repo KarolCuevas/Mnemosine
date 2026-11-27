@@ -2,8 +2,8 @@
 
 Raíz configurada en el constructor (en desarrollo, <repo>/storage). Todo el
 audio vive bajo esa raíz; los temporales bajo <raíz>/.tmp_uncommitted para
-garantizar que commit() sea un os.replace() atómico en el mismo volumen.
-Los archivos temporales interrumpidos se limpian con recover_stale_temps().
+garantizar publicación exclusiva mediante hard link en el mismo volumen.
+recover_stale_temps() se reserva a mantenimiento con escritores detenidos.
 """
 
 from __future__ import annotations
@@ -21,6 +21,10 @@ from .contract import (
     InvalidPathError,
     NotFoundError,
     StagedUpload,
+    ObjectInfo,
+    ObjectPage,
+    ObjectState,
+    StorageCapabilities,
     StorageAdapter,
     normalize_relative_path,
 )
@@ -30,14 +34,19 @@ CHUNK_SIZE = 64 * 1024
 
 
 class LocalStorageAdapter(StorageAdapter):
-    def __init__(self, root: str | Path) -> None:
+    capabilities = StorageCapabilities(write=True, listing=True, delete=True)
+
+    def __init__(self, root: str | Path, *, source_prefix: str = "") -> None:
         self.root = Path(root).expanduser().resolve()
+        self.source_prefix = normalize_relative_path(source_prefix) if source_prefix else ""
         self.root.mkdir(parents=True, exist_ok=True)
         self.tmp_dir = self.root / TEMP_DIR_NAME
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
 
     def _resolve(self, relative_path: str) -> Path:
         normalized = normalize_relative_path(relative_path)
+        if self.source_prefix and normalized != self.source_prefix and not normalized.startswith(self.source_prefix + "/"):
+            raise InvalidPathError("el objeto no pertenece a esta fuente")
         candidate = (self.root / normalized).resolve()
         if candidate != self.root and self.root not in candidate.parents:
             raise InvalidPathError("la ruta sale de la raíz de almacenamiento")
@@ -74,7 +83,16 @@ class LocalStorageAdapter(StorageAdapter):
         if not source.is_file():
             raise NotFoundError("el temporal de la carga ya no existe")
         destination.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(source, destination)
+        try:
+            # Creación exclusiva también si dos procesos compiten. Mismo volumen que el temporal.
+            os.link(source, destination)
+        except FileExistsError:
+            raise DestinationExistsError("el destino ya existe") from None
+        try:
+            source.unlink()
+        except OSError:
+            # El destino ya existe: retirar solo el temporal es mantenimiento posterior.
+            pass
         return normalize_relative_path(relative_path)
 
     def discard(self, staged: StagedUpload) -> None:
@@ -95,9 +113,9 @@ class LocalStorageAdapter(StorageAdapter):
             raise NotFoundError("el objeto no existe")
         return target.stat().st_size
 
-    def stream_range(self, relative_path: str, offset: int = 0, length: int | None = None) -> Iterator[bytes]:
-        if offset < 0:
-            raise ValueError("offset no puede ser negativo")
+    def read_range(self, relative_path: str, offset: int = 0, length: int | None = None) -> Iterator[bytes]:
+        if offset < 0 or (length is not None and length < 0):
+            raise ValueError("offset y length no pueden ser negativos")
         target = self._resolve(relative_path)
         if not target.is_file():
             raise NotFoundError("el objeto no existe")
@@ -113,6 +131,29 @@ class LocalStorageAdapter(StorageAdapter):
                 yield chunk
                 if remaining is not None:
                     remaining -= len(chunk)
+
+    def stat(self, object_id: str) -> ObjectInfo:
+        try:
+            target = self._resolve(object_id)
+            if not target.is_file():
+                return ObjectInfo(object_id, ObjectState.NOT_FOUND)
+            info = target.stat()
+            return ObjectInfo(object_id, ObjectState.FOUND, info.st_size, f"{info.st_mtime_ns}:{info.st_size}")
+        except (PermissionError, InvalidPathError):
+            return ObjectInfo(object_id, ObjectState.NOT_ACCESSIBLE)
+        except OSError:
+            return ObjectInfo(object_id, ObjectState.TEMPORARY_ERROR)
+
+    def list_objects(self, *, cursor: str | None = None, limit: int = 50) -> ObjectPage:
+        if not 1 <= limit <= 100:
+            raise ValueError("límite no válido")
+        root = self._resolve(self.source_prefix) if self.source_prefix else self.root
+        import heapq
+        # Selección acotada en memoria. El escaneo administrativo completo sigue separado.
+        names = (path.relative_to(self.root).as_posix() for path in root.rglob("*")
+                 if path.is_file() and not path.is_symlink() and self.tmp_dir not in path.parents)
+        page = heapq.nsmallest(limit + 1, (name for name in names if cursor is None or name > cursor))
+        return ObjectPage([self.stat(name) for name in page[:limit]], page[limit - 1] if len(page) > limit else None)
 
     def delete(self, relative_path: str) -> bool:
         target = self._resolve(relative_path)
